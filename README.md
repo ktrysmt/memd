@@ -6,13 +6,10 @@ Markdown with Mermaid diagrams to terminal output.
 
 ```bash
 npm install -g ktrysmt/mema
-```
-
-Or from GitHub:
-
-```bash
+# Or
 npm install -g git+https://github.com/ktrysmt/mema.git
 ```
+
 
 ## Usage
 
@@ -30,40 +27,8 @@ echo "# Hello\n\n```mermaid\nflowchart LR\n    A-->B\n```" | mema
 cat README.md | mema
 ```
 
-## Example
+### Uninstall
 
-Input (`test.md`):
-
-```markdown
-# Test
-
-```mermaid
-flowchart LR
-    A[Start] --> B{Decision}
-    B -->|Yes| C[Action 1]
-    B -->|No| D[Action 2]
-```
-```
-
-Output:
-
-```
-=== test.md ===
-
-# Test
-
-    ┌──────┐     ┌──────────┐
-    │      │     │          │
-    │ Start├────►│ Decision ├─Yes►──┐
-    │      │     │          │       │
-    └──────┘     └────┬─────┘       │
-                     │              │
-                     │              │
-                    No              │
-                     │              │
-                     │          ┌───┴───┐
-                     │          │       │
-                     └─────────►│ Action│
-                                │       │
-                                └───────┘
+```bash
+npm remove -g @ktrysmt/mema
 ```

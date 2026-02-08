@@ -72,6 +72,10 @@ function showVersion() {
   console.log(packageJson.version);
 }
 
+function showHelp() {
+  console.log('Usage: mema <markdown-file> [markdown-file2] ...\n       echo "..." | mema\n\nConverts markdown with mermaid diagrams to terminal output.\n\nOptions:\n  -v, --version    Show version number\n  -h, --help       Show usage information');
+}
+
 async function main() {
   const filePaths = getFilePathsFromArgs();
 
@@ -81,18 +85,24 @@ async function main() {
     process.exit(0);
   }
 
+  // Check for -h/--help option
+  if (filePaths.includes('-h') || filePaths.includes('--help')) {
+    showHelp();
+    process.exit(0);
+  }
+
   if (filePaths.length === 0) {
     // Check if stdin is a TTY (interactive terminal)
     // If TTY, show usage. Otherwise, read from stdin.
     if (process.stdin.isTTY) {
-      console.log('Usage: mema <markdown-file> [markdown-file2] ...\n       echo "..." | mema\n\nConverts markdown with mermaid diagrams to terminal output.\n\nOptions:\n  -v, --version    Show version number\n  -h, --help       Show usage information');
+      showHelp();
       process.exit(1);
     }
     const stdinData = await readStdin();
     if (stdinData.trim()) {
       renderMdmd(stdinData);
     } else {
-      console.log('Usage: mema <markdown-file> [markdown-file2] ...\n       echo "..." | mema\n\nConverts markdown with mermaid diagrams to terminal output.\n\nOptions:\n  -v, --version    Show version number\n  -h, --help       Show usage information');
+      showHelp();
       process.exit(1);
     }
   } else {
