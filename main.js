@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // @ts-nocheck
 import { marked } from 'marked';
 import { markedTerminal } from 'marked-terminal';
@@ -44,29 +45,50 @@ marked.use(markedTerminal());
 function renderMdmd(markdown) {
   const processedMarkdown = convertMermaidToAscii(markdown);
   const result = marked.parse(processedMarkdown);
-  process.stdout.write(result.replace(/<\/?[a-zA-Z][^>]*>/g, ''));
+  const cleanResult = result.replace(/<\/?[a-zA-Z][^>]*>/g, '');
+
+  process.stdout.write(cleanResult);
 }
 
-export { renderMdmd, convertMermaidToAscii };
-
-const filePaths = getFilePathsFromArgs();
-if (filePaths.length === 0) {
-  console.log('Usage: node main.js <markdown-file> [markdown-file2] ...\n\nConverts markdown with mermaid diagrams to terminal output.');
-  process.exit(1);
+function readStdin() {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    process.stdin.on('data', chunk => {
+      data += chunk;
+    });
+    process.stdin.on('end', () => {
+      resolve(data);
+    });
+    process.stdin.on('error', reject);
+  });
 }
 
-let exitCode = 0;
-for (const filePath of filePaths) {
-  try {
-    const markdown = readMarkdownFile(filePath);
-    console.log(`\n=== ${filePath} ===`);
-    renderMdmd(markdown);
-    console.log('');
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`Error reading file ${filePath}: ${errorMessage}`);
-    exitCode = 1;
+async function main() {
+  const filePaths = getFilePathsFromArgs();
+
+  if (filePaths.length === 0) {
+    const stdinData = await readStdin();
+    if (stdinData.trim()) {
+      renderMdmd(stdinData);
+    } else {
+      console.log('Usage: mema <markdown-file> [markdown-file2] ...\n       echo "..." | mema\n\nConverts markdown with mermaid diagrams to terminal output.');
+      process.exit(1);
+    }
+  } else {
+    let exitCode = 0;
+    for (const filePath of filePaths) {
+      try {
+        const markdown = readMarkdownFile(filePath);
+        renderMdmd(markdown);
+        console.log('');
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Error reading file ${filePath}: ${errorMessage}`);
+        exitCode = 1;
+      }
+    }
+    process.exit(exitCode);
   }
 }
 
-process.exit(exitCode);
+main();
