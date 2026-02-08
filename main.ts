@@ -13,9 +13,29 @@ function getFilePathFromArgs(): string | null {
   return args[0];
 }
 
-// ファイルを読み込んでmarkdownを返す
+// パスの正規化と安全な読み込み
 function readMarkdownFile(filePath: string): string {
-  const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(filePath);
+  // 相対パスを絶対パスに変換
+  const absolutePath = path.resolve(filePath);
+
+  // セキュリティチェック: 指定されたファイルがカレントディレクトリ以下のものであることを確認
+  const currentDir = process.cwd();
+  const currentDirResolved = path.resolve(currentDir);
+
+  // path.relativeでカレントディレクトリからの相対パスを取得
+  // ../ が含まれている場合、カレントディレクトリ外へのアクセスとみなす
+  const relativePath = path.relative(currentDirResolved, absolutePath);
+
+  // .. が含まれている場合はカレントディレクトリ外へのアクセスとみなして拒否
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    throw new Error('Invalid path: access outside current directory is not allowed');
+  }
+
+  // ファイルが存在するかチェック
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(`File not found: ${absolutePath}`);
+  }
+
   return fs.readFileSync(absolutePath, 'utf-8');
 }
 
@@ -41,8 +61,10 @@ marked.use(markedTerminal());
 // markdown をパースして出力
 function renderMdmd(markdown: string): void {
   const processedMarkdown = convertMermaidToAscii(markdown);
-  const result = marked.parse(processedMarkdown);
-  console.log(result);
+  const result = marked.parse(processedMarkdown) as string;
+  // HTMLタグを除去してからstdoutへ書き込み
+  // ReDoS対策: 簡易的なHTMLタグ除去で十分（mermaidのASCII artにはHTMLタグ含まれない想定）
+  process.stdout.write(result.replace(/<\/?[a-zA-Z][^>]*>/g, ''));
 }
 
 export { renderMdmd, convertMermaidToAscii };
@@ -54,7 +76,8 @@ if (filePath) {
     const markdown = readMarkdownFile(filePath);
     renderMdmd(markdown);
   } catch (error) {
-    console.error(`Error reading file: ${(error as Error).message}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`Error reading file: ${errorMessage}`);
     process.exit(1);
   }
 } else {
