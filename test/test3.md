@@ -1,6 +1,26 @@
-# 複雑な Mermaid 図テスト
+# Complex Mermaid Diagrams Test
 
-## シーケンス図
+## flowchart LR Test
+
+```mermaid
+flowchart LR
+    A[Starting Point] --> B{Decision}
+    B -->|Yes| C[Action 1]
+    B -->|No| D[Action 2]
+    C --> E[End]
+    D --> E
+```
+
+```mermaid
+flowchart LR
+    DB[(Database)] --> Auth[Authentication]
+    Auth --> API[API Server]
+    API --> Cache[(Redis)]
+    API --> DB
+    Cache --> API
+```
+
+## Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -17,7 +37,7 @@ sequenceDiagram
     deactivate Server
 ```
 
-## クラス図
+## Class Diagram
 
 ```mermaid
 classDiagram
@@ -41,7 +61,7 @@ classDiagram
     Animal <|-- Fish
 ```
 
-## 状態図
+## State Diagram
 
 ```mermaid
 stateDiagram-v2
@@ -52,7 +72,7 @@ stateDiagram-v2
     Crash --> [*]
 ```
 
-## エラーハンドリングの例
+## Error Handling Example
 
 ```mermaid
 flowchart TD
@@ -66,7 +86,7 @@ flowchart TD
     G -->|No| C
 ```
 
-## ganttチャート（beautiful-mermaid非対応）
+## Gantt Chart (not supported by beautiful-mermaid)
 
 ```mermaid
 gantt
@@ -80,34 +100,15 @@ gantt
     Task 4           : 24d
 ```
 
-## テキスト本文
+## Regular Text
 
-これは mermaid 図の間に挟まれた通常のテキストです。
+This is regular text between mermaid diagrams.
 
-- ポイント1
-- ポイント2
-- ポイント3
+- Point 1
+- Point 2
+- Point 3
 
-`インラインコード` も含められます。
+`Inline code` is also supported.
 
-**太字** と *斜体* も問題ありません。
+**Bold** and *italic* text work fine.
 
-## flowchart LR のテスト
-
-```mermaid
-flowchart LR
-    A[Starting Point] --> B{Decision}
-    B -->|Yes| C[Action 1]
-    B -->|No| D[Action 2]
-    C --> E[End]
-    D --> E
-```
-
-```mermaid
-flowchart LR
-    DB[(Database)] --> Auth[Authentication]
-    Auth --> API[API Server]
-    API --> Cache[(Redis)]
-    API --> DB
-    Cache --> API
-```
