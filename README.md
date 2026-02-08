@@ -1,4 +1,6 @@
-# mema - mermaid-ed markdown viewer
+# mema
+
+> mermaid-ed markdown viewer
 
 Markdown with Mermaid diagrams to terminal output.
 
