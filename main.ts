@@ -1,6 +1,23 @@
 import { marked } from 'marked';
 import { markedTerminal } from 'marked-terminal';
 import { renderMermaidAscii } from 'beautiful-mermaid';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// コマンドライン引数からファイルパスを取得
+function getFilePathFromArgs(): string | null {
+  const args = process.argv.slice(2);
+  if (args.length === 0) {
+    return null;
+  }
+  return args[0];
+}
+
+// ファイルを読み込んでmarkdownを返す
+function readMarkdownFile(filePath: string): string {
+  const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(filePath);
+  return fs.readFileSync(absolutePath, 'utf-8');
+}
 
 // Mermaid blocks in markdown を ASCII art に変換する
 function convertMermaidToAscii(markdown: string): string {
@@ -30,21 +47,20 @@ function renderMdmd(markdown: string): void {
 
 export { renderMdmd, convertMermaidToAscii };
 
-// 使い方の例
-const exampleMarkdown = `
-# Hello
+// CLIでの使用
+const filePath = getFilePathFromArgs();
+if (filePath) {
+  try {
+    const markdown = readMarkdownFile(filePath);
+    renderMdmd(markdown);
+  } catch (error) {
+    console.error(`Error reading file: ${(error as Error).message}`);
+    process.exit(1);
+  }
+} else {
+  // 引数がない場合は使い方を表示
+  console.log(`Usage: node main.ts <markdown-file>
 
-This is **markdown** printed in the \`terminal\`.
-
-\`\`\`mermaid
-flowchart TD
-    A[Start] --> B{Decision?}
-    B -->|Yes| C[Action]
-    B -->|No| D[End]
-    C --> D
-\`\`\`
-
-More text after the diagram.
-`;
-
-renderMdmd(exampleMarkdown);
+Converts markdown with mermaid diagrams to terminal output.`);
+  process.exit(1);
+}
