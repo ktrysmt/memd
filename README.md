@@ -1,13 +1,11 @@
-# termaid
+# termaid-cli
 
 > View mermaid-ed markdown in terminal
 
 ## Install/Update
 
 ```bash
-npm install -g ktrysmt/termaid
-# Or
-npm install -g git+https://github.com/ktrysmt/termaid.git
+npm install -g termaid-cli
 ```
 
 
@@ -284,7 +282,7 @@ $ echo '# Hello\n\n```mermaid\nflowchart LR\n    A --> B\n```' | termaid
 ## Uninstall
 
 ```bash
-npm remove -g @ktrysmt/termaid
+npm remove -g termaid-cli
 ```
 
 ## Debug
