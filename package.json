@@ -1,5 +1,5 @@
 {
-  "name": "termaid",
+  "name": "@ktrysmt/termaid",
   "version": "1.0.2",
   "type": "module",
   "main": "main.js",
