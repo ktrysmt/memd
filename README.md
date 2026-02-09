@@ -5,9 +5,9 @@
 ## Install/Update
 
 ```bash
-npm install -g ktrysmt/mema
+npm install -g ktrysmt/termaid
 # Or
-npm install -g git+https://github.com/ktrysmt/mema.git
+npm install -g git+https://github.com/ktrysmt/termaid.git
 ```
 
 
@@ -16,7 +16,7 @@ npm install -g git+https://github.com/ktrysmt/mema.git
 ### File input
 
 ```
-$ mema test/test1.md
+$ termaid test/test1.md
 # Hello
 
 This is markdown with mermaid:
@@ -34,7 +34,7 @@ More text.
 ### test2.md - flowchart with decision
 
 ```
-$ mema test/test2.md
+$ termaid test/test2.md
 # Hello
 
 This is markdown printed in the terminal.
@@ -72,7 +72,7 @@ More text after the diagram.
 ### test3.md - Complex Mermaid diagrams (English)
 
 ```
-$ mema test/test3.md
+$ termaid test/test3.md
 # Complex Mermaid Diagrams Test
 
 ## flowchart LR Test
@@ -271,7 +271,7 @@ This is regular text between mermaid diagrams.
 ### Stdin input
 
 ```
-$ echo '# Hello\n\n```mermaid\nflowchart LR\n    A --> B\n```' | mema
+$ echo '# Hello\n\n```mermaid\nflowchart LR\n    A --> B\n```' | termaid
 # Hello
 
     ┌───┐     ┌───┐
@@ -284,20 +284,20 @@ $ echo '# Hello\n\n```mermaid\nflowchart LR\n    A --> B\n```' | mema
 ## Uninstall
 
 ```bash
-npm remove -g @ktrysmt/mema
+npm remove -g @ktrysmt/termaid
 ```
 
 ## Debug
 
 ```bash
 # tag
-npm install -g git+https://github.com/ktrysmt/mema.git#v1.0.0
-npm install -g git+https://github.com/ktrysmt/mema.git#v1.0.1
+npm install -g git+https://github.com/ktrysmt/termaid.git#v1.0.0
+npm install -g git+https://github.com/ktrysmt/termaid.git#v1.0.1
 # branch
-npm install -g git+https://github.com/ktrysmt/mema.git#master
-npm install -g git+https://github.com/ktrysmt/mema.git#feature
+npm install -g git+https://github.com/ktrysmt/termaid.git#master
+npm install -g git+https://github.com/ktrysmt/termaid.git#feature
 # hash
-npm install -g git+https://github.com/ktrysmt/mema.git#a52a596
+npm install -g git+https://github.com/ktrysmt/termaid.git#a52a596
 ```
 
 ## Author
