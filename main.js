@@ -125,7 +125,7 @@ function spawnPager(text, options) {
 
 async function main() {
   program
-    .name('asciimaid')
+    .name('memd')
     .version(packageJson.version)
     .description('Render markdown with mermaid diagrams to terminal output')
     .argument('[files...]', 'markdown file(s) to render')

@@ -1,11 +1,11 @@
-# asciimaid
+# memd
 
 > View mermaid-ed markdown in terminal
 
 ## Install/Update
 
 ```bash
-npm install -g asciimaid-cli
+npm install -g memd-cli
 ```
 
 
@@ -14,7 +14,7 @@ npm install -g asciimaid-cli
 ### File input
 
 ```
-$ asciimaid test/test1.md
+$ memd test/test1.md
 # Hello
 
 This is markdown with mermaid:
@@ -32,7 +32,7 @@ More text.
 ### test2.md - flowchart with decision
 
 ```
-$ asciimaid test/test2.md
+$ memd test/test2.md
 # Hello
 
 This is markdown printed in the terminal.
@@ -70,7 +70,7 @@ More text after the diagram.
 ### test3.md - Complex Mermaid diagrams (English)
 
 ```
-$ asciimaid test/test3.md
+$ memd test/test3.md
 # Complex Mermaid Diagrams Test
 
 ## flowchart LR Test
@@ -269,7 +269,7 @@ This is regular text between mermaid diagrams.
 ### Stdin input
 
 ```
-$ echo '# Hello\n\n```mermaid\nflowchart LR\n    A --> B\n```' | asciimaid
+$ echo '# Hello\n\n```mermaid\nflowchart LR\n    A --> B\n```' | memd
 # Hello
 
     ┌───┐     ┌───┐
@@ -282,19 +282,19 @@ $ echo '# Hello\n\n```mermaid\nflowchart LR\n    A --> B\n```' | asciimaid
 ## Uninstall
 
 ```bash
-npm remove -g asciimaid-cli
+npm remove -g memd-cli
 ```
 
 ## Debug
 
 ```bash
 # tag
-npm install -g git+https://github.com/ktrysmt/asciimaid.git#v1.0.4
+npm install -g git+https://github.com/ktrysmt/memd.git#v1.0.4
 # branch
-npm install -g git+https://github.com/ktrysmt/asciimaid.git#master
-npm install -g git+https://github.com/ktrysmt/asciimaid.git#feature
+npm install -g git+https://github.com/ktrysmt/memd.git#master
+npm install -g git+https://github.com/ktrysmt/memd.git#feature
 # hash
-npm install -g git+https://github.com/ktrysmt/asciimaid.git#a52a596
+npm install -g git+https://github.com/ktrysmt/memd.git#a52a596
 ```
 
 ## Author
