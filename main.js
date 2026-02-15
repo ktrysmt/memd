@@ -43,6 +43,9 @@ function convertMermaidToAscii(markdown, options = {}) {
       if (options.width) {
         mermaidOptions.maxWidth = options.width;
       }
+      if (options.ascii) {
+        mermaidOptions.useAscii = true;
+      }
       const asciiArt = renderMermaidAscii(code.trim(), mermaidOptions);
       return '```text\n' + asciiArt + '\n```';
     } catch (error) {
@@ -126,13 +129,14 @@ function spawnPager(text, options) {
 async function main() {
   program
     .name('memd')
-    .version(packageJson.version)
+    .version(packageJson.version, '-v, --version', 'output the version number')
     .description('Render markdown with mermaid diagrams to terminal output')
     .argument('[files...]', 'markdown file(s) to render')
     .option('--no-pager', 'disable pager (less)')
     .option('--no-color', 'disable colored output')
     .option('--no-highlight', 'disable syntax highlighting')
-    .option('--width <number>', 'terminal width override', Number, process.stdout.columns ?? 80)
+    .option('--width <number>', 'terminal width override', Number)
+    .option('--ascii', 'use pure ASCII mode for diagrams (default: unicode)')
     .action(async (files, options) => {
       // Check if color should be disabled (--no-color or NO_COLOR env var)
       const useColor = options.color !== false && !process.env.NO_COLOR;
@@ -145,7 +149,7 @@ async function main() {
 
       marked.use(markedTerminal({
         reflowText: true,
-        width: options.width,
+        width: options.width ?? process.stdout.columns ?? 80,
       }, highlightOptions));
 
       // Override link renderer to avoid OSC 8 escape sequences (fixes tmux display issues)

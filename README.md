@@ -2,14 +2,35 @@
 
 > View mermaid-ed markdown in terminal
 
-## Install/Update
+## Install
 
 ```bash
 npm install -g memd-cli
 ```
 
-
 ## Usage
+
+
+```
+Usage: memd [options] [files...]
+
+Render markdown with mermaid diagrams to terminal output
+
+Arguments:
+  files             markdown file(s) to render
+
+Options:
+  -v, --version     output the version number
+  --no-pager        disable pager (less)
+  --no-color        disable colored output
+  --no-highlight    disable syntax highlighting
+  --width <number>  terminal width override
+  --ascii           use pure ASCII mode for diagrams (default: unicode)
+  -h, --help        display help for command
+```
+
+
+## Example
 
 ### File input
 
@@ -289,7 +310,7 @@ npm remove -g memd-cli
 
 ```bash
 # tag
-npm install -g git+https://github.com/ktrysmt/memd.git#v1.0.4
+npm install -g git+https://github.com/ktrysmt/memd.git#v1.1.0
 # branch
 npm install -g git+https://github.com/ktrysmt/memd.git#master
 npm install -g git+https://github.com/ktrysmt/memd.git#feature
