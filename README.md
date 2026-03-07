@@ -22,11 +22,13 @@ Arguments:
 Options:
   -v, --version     output the version number
   --no-pager        disable pager (less)
+  --no-mouse        disable mouse scroll in pager
   --no-color        disable colored output
   --no-highlight    disable syntax highlighting
   --width <number>  terminal width override
   --ascii           use pure ASCII mode for diagrams (default: unicode)
-  --no-mouse        disable mouse wheel scrolling in pager
+  --theme <name>    syntax highlight theme (default, monokai, dracula,
+                    github-dark, solarized, nord) (default: "default")
   -h, --help        display help for command
 ```
 
@@ -307,7 +309,13 @@ $ echo '# Hello\n\n```mermaid\nflowchart LR\n    A --> B\n```' | memd
 npm remove -g memd-cli
 ```
 
-## Debug
+## Development
+
+```bash
+node main.js test/test1.md
+```
+
+## Use specific version
 
 ```bash
 # tag

@@ -22,7 +22,7 @@ async function run(args, { waitFor = null } = {}) {
 describe('memd CLI', () => {
   it('--version', async () => {
     const output = await run(['-v'])
-    expect(output).toContain('1.1.1')
+    expect(output).toContain('1.3.0')
   })
 
   it('--help', async () => {
