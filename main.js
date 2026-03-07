@@ -102,7 +102,7 @@ function shouldUsePager(text, options) {
 function spawnPager(text, options) {
   // Respect $PAGER environment variable (like glow, bat, mdcat)
   const pagerCmd = process.env.PAGER || 'less';
-  const pagerArgs = pagerCmd === 'less' ? ['-R'] : [];
+  const pagerArgs = pagerCmd === 'less' ? ['-R', ...(options.mouse !== false ? ['--mouse'] : [])] : [];
 
   const pager = spawn(pagerCmd, pagerArgs, {
     stdio: ['pipe', 'inherit', 'inherit']
@@ -133,6 +133,7 @@ async function main() {
     .description('Render markdown with mermaid diagrams to terminal output')
     .argument('[files...]', 'markdown file(s) to render')
     .option('--no-pager', 'disable pager (less)')
+    .option('--no-mouse', 'disable mouse scroll in pager')
     .option('--no-color', 'disable colored output')
     .option('--no-highlight', 'disable syntax highlighting')
     .option('--width <number>', 'terminal width override', Number)
