@@ -26,6 +26,7 @@ Options:
   --no-highlight    disable syntax highlighting
   --width <number>  terminal width override
   --ascii           use pure ASCII mode for diagrams (default: unicode)
+  --no-mouse        disable mouse wheel scrolling in pager
   -h, --help        display help for command
 ```
 
