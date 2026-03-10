@@ -241,7 +241,7 @@ function shouldUsePager(text, options) {
 function spawnPager(text, options) {
   // Respect $PAGER environment variable (like glow, bat, mdcat)
   const pagerCmd = process.env.PAGER || 'less';
-  const pagerArgs = pagerCmd === 'less' ? ['-R', ...(options.mouse !== false ? ['--mouse'] : [])] : [];
+  const pagerArgs = pagerCmd === 'less' ? ['-R', ...(options.mouse !== false ? ['--mouse', '--wheel-lines=5'] : [])] : [];
 
   const pager = spawn(pagerCmd, pagerArgs, {
     stdio: ['pipe', 'inherit', 'inherit']
