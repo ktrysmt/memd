@@ -1,6 +1,6 @@
 # memd
 
-> View mermaid-ed markdown in terminal
+> Render markdown with mermaid diagrams
 
 ## Install
 
@@ -14,7 +14,7 @@ npm install -g memd-cli
 ```
 Usage: memd [options] [files...]
 
-Render markdown with mermaid diagrams to terminal output
+Render markdown with mermaid diagrams
 
 Arguments:
   files             markdown file(s) to render
@@ -26,8 +26,12 @@ Options:
   --no-color        disable colored output
   --width <number>  terminal width override
   --ascii           use pure ASCII mode for diagrams (default: unicode)
-  --theme <name>    syntax highlight theme (default, monokai, dracula,
-                    github-dark, solarized, nord) (default: "default")
+  --html            output as standalone HTML (mermaid diagrams rendered as inline SVG)
+  --theme <name>    color theme (default: "nord")
+                    zinc-light, zinc-dark, tokyo-night, tokyo-night-storm,
+                    tokyo-night-light, catppuccin-mocha, catppuccin-latte,
+                    nord, nord-light, dracula, github-light, github-dark,
+                    solarized-light, solarized-dark, one-dark
   -h, --help        display help for command
 ```
 
@@ -289,6 +293,16 @@ This is regular text between mermaid diagrams.
 
 ```
 
+### HTML output
+
+HTML is written to stdout. Use shell redirection to save to a file.
+
+```
+$ memd doc.md --html > out.html
+$ memd doc.md --html --theme dracula > out.html
+$ memd a.md b.md --html > combined.html
+```
+
 ### Stdin input
 
 ```
@@ -318,7 +332,7 @@ node main.js test/test1.md
 
 ```bash
 # tag
-npm install -g git+https://github.com/ktrysmt/memd.git#v1.1.0
+npm install -g git+https://github.com/ktrysmt/memd.git#v2.0.0
 # branch
 npm install -g git+https://github.com/ktrysmt/memd.git#master
 npm install -g git+https://github.com/ktrysmt/memd.git#feature

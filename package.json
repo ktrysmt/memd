@@ -1,6 +1,6 @@
 {
   "name": "memd-cli",
-  "version": "1.5.1",
+  "version": "2.0.0",
   "type": "module",
   "main": "main.js",
   "bin": {
@@ -12,14 +12,17 @@
   "dependencies": {
     "beautiful-mermaid": "^1.1.2",
     "chalk": "^5.6.2",
-    "cli-highlight": "^2.1.11",
     "commander": "^14.0.3",
     "marked": "^17.0.3",
-    "marked-terminal": "^7.3.0"
+    "marked-terminal": "^7.3.0",
+    "shiki": "^4.0.2"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/ktrysmt/memd.git"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "license": "MIT",
   "packageManager": "pnpm@10.15.1",

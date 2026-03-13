@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 // @ts-nocheck
-import { marked } from 'marked';
+import { marked, Marked } from 'marked';
 import { markedTerminal } from 'marked-terminal';
-import { renderMermaidASCII } from 'beautiful-mermaid';
-import { highlight, supportsLanguage, plain } from 'cli-highlight';
+import { renderMermaidASCII, renderMermaidSVG, THEMES as MERMAID_THEMES } from 'beautiful-mermaid';
 import chalk from 'chalk';
 import { program } from 'commander';
 import { spawn } from 'child_process';
@@ -11,151 +10,198 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
+import { createHighlighterCoreSync } from 'shiki/core';
+import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
+import { bundledThemes } from 'shiki/themes';
+import { bundledLanguages } from 'shiki/langs';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
 
-// HSL color utilities for deriving muted variants from base hex colors
-function hexToHsl(hex) {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h, s, l = (max + min) / 2;
-  if (max === min) {
-    h = s = 0;
-  } else {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-      case g: h = ((b - r) / d + 2) / 6; break;
-      case b: h = ((r - g) / d + 4) / 6; break;
-    }
+// Shiki theme IDs used by memd (keys into bundledThemes)
+const SHIKI_THEME_IDS = [
+  'nord', 'dracula', 'one-dark-pro',
+  'github-dark', 'github-light',
+  'solarized-dark', 'solarized-light',
+  'catppuccin-mocha', 'catppuccin-latte',
+  'tokyo-night', 'one-light',
+  'everforest-light', 'min-dark', 'min-light',
+];
+
+// Language IDs to preload (top 19 for >95% real-world coverage)
+const SHIKI_LANG_IDS = [
+  'javascript', 'typescript', 'python', 'shellscript',
+  'go', 'rust', 'java', 'c', 'cpp',
+  'ruby', 'php', 'html', 'css', 'json',
+  'yaml', 'toml', 'sql', 'markdown', 'diff',
+];
+
+let _highlighter;
+async function getHighlighter() {
+  if (!_highlighter) {
+    const [themes, langs] = await Promise.all([
+      Promise.all(SHIKI_THEME_IDS.map(id => bundledThemes[id]().then(m => m.default))),
+      Promise.all(SHIKI_LANG_IDS.map(id => bundledLanguages[id]().then(m => m.default))),
+    ]);
+    _highlighter = createHighlighterCoreSync({
+      themes,
+      langs,
+      engine: createJavaScriptRegexEngine(),
+    });
   }
-  return [h * 360, s * 100, l * 100];
+  return _highlighter;
 }
 
-function hslToHex(h, s, l) {
-  h /= 360; s /= 100; l /= 100;
-  let r, g, b;
-  if (s === 0) {
-    r = g = b = l;
-  } else {
-    const hue2rgb = (p, q, t) => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1/6) return p + (q - p) * 6 * t;
-      if (t < 1/2) return q;
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-      return p;
-    };
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    r = hue2rgb(p, q, h + 1/3);
-    g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1/3);
-  }
-  const toHex = x => Math.round(x * 255).toString(16).padStart(2, '0');
+// Maps memd theme name -> { shikiTheme: string (Shiki theme ID), mermaidTheme: string }
+const THEME_MAP = {
+  'nord':              { shikiTheme: 'nord',              mermaidTheme: 'nord' },
+  'dracula':           { shikiTheme: 'dracula',           mermaidTheme: 'dracula' },
+  'one-dark':          { shikiTheme: 'one-dark-pro',      mermaidTheme: 'one-dark' },
+  'github-dark':       { shikiTheme: 'github-dark',       mermaidTheme: 'github-dark' },
+  'github-light':      { shikiTheme: 'github-light',      mermaidTheme: 'github-light' },
+  'solarized-dark':    { shikiTheme: 'solarized-dark',    mermaidTheme: 'solarized-dark' },
+  'solarized-light':   { shikiTheme: 'solarized-light',   mermaidTheme: 'solarized-light' },
+  'catppuccin-mocha':  { shikiTheme: 'catppuccin-mocha',  mermaidTheme: 'catppuccin-mocha' },
+  'catppuccin-latte':  { shikiTheme: 'catppuccin-latte',  mermaidTheme: 'catppuccin-latte' },
+  'tokyo-night':       { shikiTheme: 'tokyo-night',       mermaidTheme: 'tokyo-night' },
+  'tokyo-night-storm': { shikiTheme: 'tokyo-night',       mermaidTheme: 'tokyo-night-storm' },
+  'tokyo-night-light': { shikiTheme: 'one-light',         mermaidTheme: 'tokyo-night-light' },
+  'nord-light':        { shikiTheme: 'everforest-light',  mermaidTheme: 'nord-light' },
+  'zinc-dark':         { shikiTheme: 'min-dark',          mermaidTheme: 'zinc-dark' },
+  'zinc-light':        { shikiTheme: 'min-light',         mermaidTheme: 'zinc-light' },
+};
+
+// Single source of truth for available theme names (used in --help and validation)
+const THEME_NAMES = Object.keys(THEME_MAP);
+
+// Color mixing: blend hex1 into hex2 at pct% (sRGB linear interpolation)
+// Equivalent to CSS color-mix(in srgb, hex1 pct%, hex2)
+function mixHex(hex1, hex2, pct) {
+  const p = pct / 100;
+  const parse = (h, o) => parseInt(h.slice(o, o + 2), 16);
+  const mix = (c1, c2) => Math.round(c1 * p + c2 * (1 - p));
+  const toHex = x => x.toString(16).padStart(2, '0');
+  const r = mix(parse(hex1, 1), parse(hex2, 1));
+  const g = mix(parse(hex1, 3), parse(hex2, 3));
+  const b = mix(parse(hex1, 5), parse(hex2, 5));
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
-// Mute a hex color: reduce saturation and shift lightness toward middle
-function mute(hex, satMul = 0.55, lightShift = 0.85) {
-  const [h, s, l] = hexToHsl(hex);
-  const newS = s * satMul;
-  const newL = l * lightShift;
-  return hslToHex(h, Math.min(newS, 100), Math.max(Math.min(newL, 100), 0));
+// MIX ratios from beautiful-mermaid theme.ts:64-87
+const MIX = { line: 50, arrow: 85, textSec: 60, nodeStroke: 20 };
+
+// Gentle desaturation by blending toward neutral gray (#808080) in sRGB space.
+// amount=0.15 means 15% toward gray. Replaces the old mute() (HSL-based) with a simpler,
+// more predictable sRGB blend that avoids hue shifts from HSL rounding.
+function softenHex(hex, amount = 0.15) {
+  const parse = (h, o) => parseInt(h.slice(o, o + 2), 16);
+  const mix = (c, gray) => Math.round(c * (1 - amount) + gray * amount);
+  const toHex = x => x.toString(16).padStart(2, '0');
+  const r = mix(parse(hex, 1), 128);
+  const g = mix(parse(hex, 3), 128);
+  const b = mix(parse(hex, 5), 128);
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
-// Build theme from base palette: markdown gets vivid colors, code blocks get muted variants
-function buildTheme(colors) {
-  const m = (hex) => mute(hex); // muted variant for code block elements
+function tokensToAnsi(lines) {
+  if (chalk.level === 0) {
+    // --no-color: return plain text without ANSI codes
+    return lines.map(line => line.map(t => t.content).join('')).join('\n');
+  }
+  return lines.map(line =>
+    line.map(token => {
+      if (!token.color) return token.content;
+      const r = parseInt(token.color.slice(1, 3), 16);
+      const g = parseInt(token.color.slice(3, 5), 16);
+      const b = parseInt(token.color.slice(5, 7), 16);
+      return `\x1b[38;2;${r};${g};${b}m${token.content}\x1b[39m`;
+    }).join('')
+  ).join('\n');
+}
+
+function highlightWithShikiSync(hl, code, lang, shikiThemeName) {
+  const loadedLangs = hl.getLoadedLanguages();
+  const effectiveLang = loadedLangs.includes(lang) ? lang : 'text';
+
+  if (effectiveLang === 'text') {
+    return code;
+  }
+
+  const tokens = hl.codeToTokensBase(code, {
+    lang: effectiveLang,
+    theme: shikiThemeName,
+  });
+  return tokensToAnsi(tokens);
+}
+
+function extractMarkdownStyleSync(hl, shikiThemeName) {
+  const theme = hl.getTheme(shikiThemeName);
+
+  const findColor = (...scopes) => {
+    for (const scope of scopes) {
+      const setting = theme.settings?.find(s => {
+        if (!s.scope) return false;
+        const scopeList = Array.isArray(s.scope) ? s.scope : [s.scope];
+        return scopeList.some(sc => sc === scope || sc.startsWith(scope + '.'));
+      });
+      if (setting?.settings?.foreground) return setting.settings.foreground;
+    }
+    return theme.fg;
+  };
+
+  const accent = softenHex(findColor('entity.name.function', 'support.function', 'keyword'));
+  const string = softenHex(findColor('string', 'string.quoted'));
+  const comment = softenHex(findColor('comment', 'punctuation.definition.comment'));
+  const type = softenHex(findColor('entity.name.type', 'support.type', 'storage.type'));
+  const param = softenHex(findColor('variable.parameter', 'variable.other', 'entity.name.tag'));
+  const fg = theme.fg;
+
   return {
-    highlight: {
-      keyword: chalk.hex(m(colors.keyword)),
-      built_in: chalk.hex(m(colors.type)).italic,
-      type: chalk.hex(m(colors.type)),
-      literal: chalk.hex(m(colors.literal)),
-      number: chalk.hex(m(colors.number)),
-      regexp: chalk.hex(m(colors.string)),
-      string: chalk.hex(m(colors.string)),
-      subst: chalk.hex(m(colors.fg)),
-      symbol: chalk.hex(m(colors.literal)),
-      class: chalk.hex(m(colors.type)),
-      function: chalk.hex(m(colors.func)),
-      title: chalk.hex(m(colors.func)),
-      params: chalk.hex(m(colors.param)).italic,
-      comment: chalk.hex(m(colors.comment)).italic,
-      doctag: chalk.hex(m(colors.comment)).bold,
-      meta: chalk.hex(m(colors.comment)),
-      'meta-keyword': chalk.hex(m(colors.keyword)),
-      'meta-string': chalk.hex(m(colors.string)),
-      tag: chalk.hex(m(colors.keyword)),
-      name: chalk.hex(m(colors.keyword)),
-      attr: chalk.hex(m(colors.func)),
-      attribute: chalk.hex(m(colors.func)),
-      variable: chalk.hex(m(colors.fg)),
-      addition: chalk.hex(m(colors.added)),
-      deletion: chalk.hex(m(colors.deleted)),
-      default: plain,
-    },
-    markdown: {
-      firstHeading: chalk.hex(colors.heading1).underline.bold,
-      heading: chalk.hex(colors.heading2).bold,
-      code: chalk.hex(colors.string),
-      codespan: chalk.hex(colors.string),
-      blockquote: chalk.hex(colors.comment).italic,
-      strong: chalk.hex(colors.fg).bold,
-      em: chalk.hex(colors.param).italic,
-      del: chalk.hex(colors.comment).strikethrough,
-      link: chalk.hex(colors.type),
-      href: chalk.hex(colors.type).underline,
-    },
+    firstHeading: chalk.hex(accent).underline.bold,
+    heading:      chalk.hex(accent).bold,
+    code:         chalk.hex(string),
+    codespan:     chalk.hex(string),
+    blockquote:   chalk.hex(comment).italic,
+    strong:       chalk.hex(fg).bold,
+    em:           chalk.hex(param).italic,
+    del:          chalk.hex(comment).strikethrough,
+    link:         chalk.hex(type),
+    href:         chalk.hex(type).underline,
   };
 }
 
-// Theme color palettes
-const THEMES = {
-  default: { highlight: null, markdown: {} },
-  monokai: buildTheme({
-    keyword:  '#F92672', func:    '#A6E22E', string:  '#E6DB74',
-    type:     '#66D9EF', number:  '#AE81FF', literal: '#AE81FF',
-    param:    '#FD971F', comment: '#75715E', fg:      '#F8F8F2',
-    heading1: '#F92672', heading2:'#A6E22E',
-    added:    '#A6E22E', deleted: '#F92672',
-  }),
-  dracula: buildTheme({
-    keyword:  '#FF79C6', func:    '#50FA7B', string:  '#F1FA8C',
-    type:     '#8BE9FD', number:  '#BD93F9', literal: '#BD93F9',
-    param:    '#FFB86C', comment: '#6272A4', fg:      '#F8F8F2',
-    heading1: '#BD93F9', heading2:'#FF79C6',
-    added:    '#50FA7B', deleted: '#FF5555',
-  }),
-  'github-dark': buildTheme({
-    keyword:  '#FF7B72', func:    '#D2A8FF', string:  '#A5D6FF',
-    type:     '#FFA657', number:  '#79C0FF', literal: '#79C0FF',
-    param:    '#C9D1D9', comment: '#8B949E', fg:      '#C9D1D9',
-    heading1: '#FFFFFF', heading2:'#79C0FF',
-    added:    '#7EE787', deleted: '#FF7B72',
-  }),
-  solarized: buildTheme({
-    keyword:  '#859900', func:    '#268BD2', string:  '#2AA198',
-    type:     '#B58900', number:  '#D33682', literal: '#2AA198',
-    param:    '#93A1A1', comment: '#586E75', fg:      '#93A1A1',
-    heading1: '#CB4B16', heading2:'#268BD2',
-    added:    '#859900', deleted: '#DC322F',
-  }),
-  nord: buildTheme({
-    keyword:  '#81A1C1', func:    '#88C0D0', string:  '#A3BE8C',
-    type:     '#8FBCBB', number:  '#B48EAD', literal: '#81A1C1',
-    param:    '#D8DEE9', comment: '#616E88', fg:      '#D8DEE9',
-    heading1: '#88C0D0', heading2:'#81A1C1',
-    added:    '#A3BE8C', deleted: '#BF616A',
-  }),
-};
+// DiagramColors -> AsciiTheme conversion (equivalent to beautiful-mermaid's internal diagramColorsToAsciiTheme)
+function diagramColorsToAsciiTheme(colors) {
+  const line = colors.line ?? mixHex(colors.fg, colors.bg, MIX.line);
+  const border = colors.border ?? mixHex(colors.fg, colors.bg, MIX.nodeStroke);
+  return {
+    fg: colors.fg,
+    bg: colors.bg,
+    line,
+    border,
+    arrow: colors.accent ?? mixHex(colors.fg, colors.bg, MIX.arrow),
+    accent: colors.accent,
+    corner: line,
+    junction: border,
+  };
+}
 
-const THEME_NAMES = Object.keys(THEMES);
+// Resolve optional DiagramColors fields for HTML template CSS
+function resolveThemeColors(colors) {
+  return {
+    bg: colors.bg,
+    fg: colors.fg,
+    line: colors.line ?? mixHex(colors.fg, colors.bg, MIX.line),
+    accent: colors.accent ?? mixHex(colors.fg, colors.bg, MIX.arrow),
+    muted: colors.muted ?? mixHex(colors.fg, colors.bg, MIX.textSec),
+    border: colors.border ?? mixHex(colors.fg, colors.bg, MIX.nodeStroke),
+  };
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
 function readMarkdownFile(filePath) {
   const absolutePath = path.resolve(filePath);
@@ -171,20 +217,25 @@ function readMarkdownFile(filePath) {
     throw new Error('File not found: ' + absolutePath);
   }
 
-  return fs.readFileSync(absolutePath, 'utf-8');
+  // Resolve symlinks and re-check to prevent symlink-based traversal
+  const realPath = fs.realpathSync(absolutePath);
+  const realRelative = path.relative(currentDirResolved, realPath);
+  if (realRelative.startsWith('..') || path.isAbsolute(realRelative)) {
+    throw new Error('Invalid path: access outside current directory is not allowed');
+  }
+
+  return fs.readFileSync(realPath, 'utf-8');
 }
 
-function convertMermaidToAscii(markdown, options = {}) {
+function convertMermaidToAscii(markdown, { useAscii = false, colorMode, theme } = {}) {
   const mermaidRegex = /```mermaid\s+([\s\S]+?)```/g;
 
   return markdown.replace(mermaidRegex, function (_, code) {
     try {
       const mermaidOptions = {};
-      if (options.ascii) {
-        mermaidOptions.useAscii = true;
-      }
-      // Set color mode based on --no-color flag
-      mermaidOptions.colorMode = options.color === false ? 'none' : 'none';
+      if (useAscii) mermaidOptions.useAscii = true;
+      if (colorMode !== undefined) mermaidOptions.colorMode = colorMode;
+      if (theme) mermaidOptions.theme = theme;
       const asciiArt = renderMermaidASCII(code.trim(), mermaidOptions);
       return '```text\n' + asciiArt + '\n```';
     } catch (error) {
@@ -196,17 +247,56 @@ function convertMermaidToAscii(markdown, options = {}) {
   });
 }
 
-function renderToString(markdown, options = {}) {
-  const processedMarkdown = convertMermaidToAscii(markdown, options);
-  let result = marked.parse(processedMarkdown);
+function convertMermaidToSVG(markdown, diagramTheme) {
+  const mermaidRegex = /```mermaid\s+([\s\S]+?)```/g;
+  let svgIndex = 0;
+  return markdown.replace(mermaidRegex, (_, code) => {
+    try {
+      const prefix = `m${svgIndex++}`;
+      let svg = renderMermaidSVG(code.trim(), diagramTheme);
+      svg = svg.replace(/@import url\([^)]+\);\s*/g, '');
+      // Prefix all id="..." and url(#...) to avoid cross-SVG collisions
+      // Note: regex uses ` id=` (with leading space) to avoid matching `data-id`
+      svg = svg.replace(/ id="([^"]+)"/g, ` id="${prefix}-$1"`);
+      svg = svg.replace(/url\(#([^)]+)\)/g, `url(#${prefix}-$1)`);
+      return svg;
+    } catch (e) {
+      return `<pre class="mermaid-error">${escapeHtml(e.message)}\n\n${escapeHtml(code.trim())}</pre>`;
+    }
+  });
+}
 
-  // Strip ANSI color codes if --no-color is specified
-  if (options.color === false) {
-    // Remove ANSI escape codes (color, style, etc.)
-    result = result.replace(/\x1b\[[0-9;]*m/g, '');
-  }
+function renderToHTML(markdown, diagramColors) {
+  const processed = convertMermaidToSVG(markdown, diagramColors);
+  const htmlMarked = new Marked();
+  const body = htmlMarked.parse(processed);
+  const t = resolveThemeColors(diagramColors);
 
-  return result;
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body { background: ${t.bg}; color: ${t.fg}; font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+a { color: ${t.accent}; }
+hr { border-color: ${t.line}; }
+blockquote { border-left: 3px solid ${t.line}; color: ${t.muted}; padding-left: 1rem; }
+svg { max-width: 100%; height: auto; }
+pre { background: color-mix(in srgb, ${t.fg} 8%, ${t.bg}); padding: 1rem; border-radius: 6px; overflow-x: auto; }
+code { font-size: 0.9em; color: ${t.accent}; }
+pre code { color: inherit; }
+table { border-collapse: collapse; }
+th, td { border: 1px solid ${t.line}; padding: 0.4rem 0.8rem; }
+th { background: color-mix(in srgb, ${t.fg} 5%, ${t.bg}); }
+.mermaid-error { background: color-mix(in srgb, ${t.accent} 10%, ${t.bg}); border: 1px solid color-mix(in srgb, ${t.accent} 40%, ${t.bg}); color: ${t.fg}; padding: 1rem; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+${body.trimEnd()}
+</body>
+</html>
+`;
 }
 
 function readStdin() {
@@ -269,71 +359,31 @@ async function main() {
   program
     .name('memd')
     .version(packageJson.version, '-v, --version', 'output the version number')
-    .description('Render markdown with mermaid diagrams to terminal output')
+    .description('Render markdown with mermaid diagrams')
     .argument('[files...]', 'markdown file(s) to render')
     .option('--no-pager', 'disable pager (less)')
     .option('--no-mouse', 'disable mouse scroll in pager')
     .option('--no-color', 'disable colored output')
     .option('--width <number>', 'terminal width override', Number)
     .option('--ascii', 'use pure ASCII mode for diagrams (default: unicode)')
-    .option('--theme <name>', `syntax highlight theme (${THEME_NAMES.join(', ')})`, 'default')
+    .option('--html', 'output as standalone HTML (mermaid diagrams rendered as inline SVG)')
+    .option('--theme <name>', `color theme\n${THEME_NAMES.join(', ')}`, 'nord')
     .action(async (files, options) => {
-      // Validate theme option
-      const themeName = options.theme || 'default';
-      if (!(themeName in THEMES)) {
-        console.error(`Unknown theme: ${themeName}\nAvailable themes: ${THEME_NAMES.join(', ')}`);
+      // 1. Validate theme via THEME_MAP (unified for both paths)
+      if (!(options.theme in THEME_MAP)) {
+        const names = Object.keys(THEME_MAP).join(', ');
+        console.error(`Unknown theme: ${options.theme}\nAvailable themes: ${names}`);
+        process.exit(1);
+      }
+      const themeEntry = THEME_MAP[options.theme];
+      const diagramColors = MERMAID_THEMES[themeEntry.mermaidTheme];
+      if (!diagramColors) {
+        console.error(`Internal error: mermaid theme '${themeEntry.mermaidTheme}' not found in beautiful-mermaid`);
         process.exit(1);
       }
 
-      // Check if color should be disabled (--no-color or NO_COLOR env var)
-      const useColor = options.color !== false && !process.env.NO_COLOR;
-
-      // Configure syntax highlighting options (passed to cli-highlight)
-      const shouldHighlight = useColor;
-
-      // Configure marked with terminal renderer
-      const selectedTheme = THEMES[themeName];
-      const highlightOptions = shouldHighlight
-        ? {
-            ignoreIllegals: true,
-            ...(selectedTheme.highlight ? { theme: selectedTheme.highlight } : {}),
-          }
-        : undefined;
-
-      marked.use(markedTerminal({
-        reflowText: true,
-        width: options.width ?? process.stdout.columns ?? 80,
-        ...selectedTheme.markdown,
-      }, highlightOptions));
-
-      // Override link renderer to avoid OSC 8 escape sequences (fixes tmux display issues)
-      marked.use({
-        renderer: {
-          link(token) {
-            // URLとテキストを両方表示する場合
-            return token.text + (token.text !== token.href ? ` (${token.href})` : '');
-          }
-        }
-      });
-
-      // If highlighting is disabled, override the code renderer to bypass cli-highlight
-      if (!shouldHighlight) {
-        marked.use({
-          renderer: {
-            code(token) {
-              // Extract code text from token
-              const codeText = typeof token === 'string' ? token : (token.text || token);
-              // Return plain code without highlighting
-              // Note: We still need to format it as marked-terminal would
-              const lines = String(codeText).split('\n');
-              const indented = lines.map(line => '    ' + line).join('\n');
-              return indented + '\n';
-            }
-          }
-        });
-      }
-
-      const parts = [];
+      // 2. Read input (common): files or stdin -> markdownParts[]
+      const markdownParts = [];
 
       if (files.length === 0) {
         // Read from stdin
@@ -343,37 +393,105 @@ async function main() {
 
         const stdinData = await readStdin();
         if (stdinData.trim()) {
-          parts.push(renderToString(stdinData, options));
+          markdownParts.push(stdinData);
         } else {
           program.help();
         }
       } else {
-        // Read from files
         let exitCode = 0;
         for (const filePath of files) {
           try {
-            const markdown = readMarkdownFile(filePath);
-            parts.push(renderToString(markdown, options));
+            markdownParts.push(readMarkdownFile(filePath));
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.error(`Error reading file ${filePath}: ${errorMessage}`);
             exitCode = 1;
           }
         }
-
         if (exitCode !== 0) {
           process.exit(exitCode);
         }
       }
 
-      // Combine all output
-      const fullText = parts.join('\n\n') + '\n';
-
-      // Use pager if needed
-      if (shouldUsePager(fullText, options)) {
-        spawnPager(fullText, options);
+      if (options.html) {
+        // 3a. HTML path
+        const combined = markdownParts.join('\n\n');
+        const html = renderToHTML(combined, diagramColors);
+        process.stdout.write(html);
       } else {
-        process.stdout.write(fullText);
+        // 3b. Terminal path
+
+        // --no-color: disable all ANSI output at the root via chalk.level = 0
+        const useColor = options.color !== false && !process.env.NO_COLOR;
+        if (!useColor) {
+          chalk.level = 0;
+        }
+
+        const shikiThemeName = themeEntry.shikiTheme;
+
+        // Initialize Shiki highlighter (async load, then used synchronously)
+        const hl = await getHighlighter();
+
+        // Extract markdown element styling from Shiki theme (with softenHex desaturation)
+        const markdownStyle = extractMarkdownStyleSync(hl, shikiThemeName);
+
+        // Pass null for highlightOptions to marked-terminal.
+        // The code renderer override below intercepts all code blocks before
+        // marked-terminal's internal highlight function is reached.
+        marked.use(markedTerminal({
+          reflowText: true,
+          width: options.width ?? process.stdout.columns ?? 80,
+          ...markdownStyle,
+        }, null));
+
+        // Override link renderer to avoid OSC 8 escape sequences (fixes tmux display issues)
+        marked.use({
+          renderer: {
+            link(token) {
+              return token.text + (token.text !== token.href ? ` (${token.href})` : '');
+            }
+          }
+        });
+
+        // Override code renderer to use Shiki instead of cli-highlight.
+        // This marked.use() call MUST come after markedTerminal() so that it takes
+        // precedence over marked-terminal's internal code renderer (marked v17+
+        // applies later overrides first).
+        marked.use({
+          renderer: {
+            code(token) {
+              const lang = token.lang || '';
+              const code = typeof token === 'string' ? token : (token.text || token);
+              const highlighted = highlightWithShikiSync(hl, String(code), lang, shikiThemeName);
+              const lines = highlighted.split('\n');
+              const indented = lines.map(line => '    ' + line).join('\n');
+              return indented + '\n';
+            }
+          }
+        });
+
+        // Convert DiagramColors to AsciiTheme for terminal rendering
+        const asciiTheme = diagramColorsToAsciiTheme(diagramColors);
+        const colorMode = useColor ? undefined : 'none';
+
+        const parts = [];
+        for (const markdown of markdownParts) {
+          const processed = convertMermaidToAscii(markdown, {
+            useAscii: options.ascii,
+            colorMode,
+            theme: asciiTheme,
+          });
+          parts.push(marked.parse(processed));
+        }
+
+        const fullText = parts.join('\n\n') + '\n';
+
+        // Use pager if needed
+        if (shouldUsePager(fullText, options)) {
+          spawnPager(fullText, options);
+        } else {
+          process.stdout.write(fullText);
+        }
       }
     });
 
