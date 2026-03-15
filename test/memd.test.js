@@ -27,7 +27,7 @@ function runSync(args) {
 describe('memd CLI', () => {
   it('--version', async () => {
     const output = await run(['-v'])
-    expect(output).toContain('2.0.1')
+    expect(output).toContain('2.1.0')
   })
 
   it('--help', async () => {
@@ -278,6 +278,37 @@ describe('memd CLI', () => {
       )
       expect(output).toContain('Hello')
       expect(output).toContain('More text.')
+    })
+
+    it('MEMD_THEME env sets default theme (HTML path)', () => {
+      const output = execSync(`node ${MAIN} --html test/test1.md`, {
+        encoding: 'utf-8',
+        timeout: 15000,
+        env: { ...process.env, MEMD_THEME: 'dracula' },
+      })
+      expect(output).toContain('#282a36') // dracula bg
+      expect(output).toContain('#f8f8f2') // dracula fg
+    })
+
+    it('--theme flag overrides MEMD_THEME env', () => {
+      const output = execSync(`node ${MAIN} --html --theme tokyo-night test/test1.md`, {
+        encoding: 'utf-8',
+        timeout: 15000,
+        env: { ...process.env, MEMD_THEME: 'dracula' },
+      })
+      expect(output).toContain('#1a1b26') // tokyo-night bg
+      expect(output).not.toContain('#282a36') // not dracula bg
+    })
+
+    it('invalid MEMD_THEME env exits with error', () => {
+      expect(() => {
+        execSync(`node ${MAIN} --html test/test1.md`, {
+          encoding: 'utf-8',
+          timeout: 15000,
+          stdio: 'pipe',
+          env: { ...process.env, MEMD_THEME: 'nonexistent' },
+        })
+      }).toThrow()
     })
   })
 

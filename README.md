@@ -27,7 +27,7 @@ Options:
   --width <number>  terminal width override
   --ascii           use pure ASCII mode for diagrams (default: unicode)
   --html            output as standalone HTML (mermaid diagrams rendered as inline SVG)
-  --theme <name>    color theme (default: "nord")
+  --theme <name>    color theme (default: "nord", env: MEMD_THEME)
                     zinc-light, zinc-dark, tokyo-night, tokyo-night-storm,
                     tokyo-night-light, catppuccin-mocha, catppuccin-latte,
                     nord, nord-light, dracula, github-light, github-dark,

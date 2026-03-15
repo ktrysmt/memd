@@ -372,7 +372,7 @@ async function main() {
     .option('--width <number>', 'terminal width override', Number)
     .option('--ascii', 'use pure ASCII mode for diagrams (default: unicode)')
     .option('--html', 'output as standalone HTML (mermaid diagrams rendered as inline SVG)')
-    .option('--theme <name>', `color theme\n${THEME_NAMES.join(', ')}`, 'nord')
+    .option('--theme <name>', `color theme (env: MEMD_THEME)\n${THEME_NAMES.join(', ')}`, process.env.MEMD_THEME || 'nord')
     .action(async (files, options) => {
       // 1. Validate theme via THEME_MAP (unified for both paths)
       if (!(options.theme in THEME_MAP)) {

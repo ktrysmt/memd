@@ -1,6 +1,6 @@
 {
   "name": "memd-cli",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "type": "module",
   "main": "main.js",
   "bin": {
@@ -10,10 +10,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "beautiful-mermaid": "^1.1.2",
+    "beautiful-mermaid": "^1.1.3",
     "chalk": "^5.6.2",
     "commander": "^14.0.3",
-    "marked": "^17.0.3",
+    "marked": "^17.0.4",
     "marked-terminal": "^7.3.0",
     "shiki": "^4.0.2"
   },
@@ -25,7 +25,7 @@
     "node": ">=20"
   },
   "license": "MIT",
-  "packageManager": "pnpm@10.15.1",
+  "packageManager": "pnpm@10.32.1",
   "devDependencies": {
     "tuistory": "^0.0.16",
     "vitest": "^4.0.18"
