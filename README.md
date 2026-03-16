@@ -293,6 +293,45 @@ This is regular text between mermaid diagrams.
 
 ```
 
+### Serve
+
+Start a local HTTP server that renders `.md` files as HTML on the fly.
+
+```
+$ memd serve
+memd serve
+  Directory: /home/ubuntu/docs
+  Theme:     nord
+  URL:       http://localhost:8888/
+
+$ memd serve --dir ./docs --port 3000 --theme dracula
+$ memd serve --workers 2
+$ memd serve --watch
+```
+
+```
+Usage: memd serve [options]
+
+Start HTTP server to serve .md files as HTML
+
+Options:
+  -d, --dir <path>     directory to serve (default: ".")
+  -p, --port <number>  port number (0-65535) (default: 8888)
+  --host <string>      host to bind (default: "127.0.0.1")
+  --workers <number>   number of render workers (default: min(cpus-1, 4))
+  --watch              watch for file changes and live-reload
+  --theme <name>       color theme (env: MEMD_THEME) (default: "nord")
+  -h, --help           display help for command
+```
+
+> **Note:** `--host 0.0.0.0` を指定するとネットワーク上の全インターフェースにバインドされます。認証機構はないため、ディレクトリ内の `.md` ファイルがネットワーク上から閲覧可能になります。信頼されたネットワーク内でのみ使用してください。
+>
+> serve コマンドはパス検証とファイル読み取りの間にわずかなタイミング差 (TOCTOU) があります。信頼されたファイルシステム上で使用してください。
+>
+> serve は `.md` ファイル、画像 (png, jpg, gif, svg, webp, ico, avif)、CSS を配信します。JavaScript やその他のファイルは配信されません。
+>
+> 各ワーカーは独立した V8 isolate で Mermaid レンダリングライブラリをロードします。ワーカー1つあたり約 80-120 MB のメモリを消費します。デフォルトは `min(CPU数-1, 4)` ワーカーです。メモリが限られた環境では `--workers 1` を指定してください。推奨メモリ: 512 MB + (ワーカー数 x 120 MB)。
+
 ### HTML output
 
 HTML is written to stdout. Use shell redirection to save to a file.

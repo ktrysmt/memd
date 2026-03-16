@@ -1,11 +1,15 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { launchTerminal } from 'tuistory'
-import { execSync } from 'child_process'
+import { execSync, spawn } from 'child_process'
+import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const MAIN = path.join(__dirname, '..', 'main.js')
+
+// Strip MEMD_THEME from env so tests always get the built-in default (nord)
+delete process.env.MEMD_THEME
 
 async function run(args, { waitFor = null } = {}) {
   const session = await launchTerminal({
@@ -27,7 +31,7 @@ function runSync(args) {
 describe('memd CLI', () => {
   it('--version', async () => {
     const output = await run(['-v'])
-    expect(output).toContain('2.1.0')
+    expect(output).toContain('3.0.0')
   })
 
   it('--help', async () => {
@@ -376,3 +380,289 @@ describe('memd CLI', () => {
     expect(output).not.toContain('Could not find the language')
   })
 })
+
+describe('memd serve', () => {
+  const PORT = 19876
+  const BASE_URL = `http://127.0.0.1:${PORT}`
+  let serverProcess
+
+  beforeAll(async () => {
+    serverProcess = spawn('node', [MAIN, 'serve', '--port', String(PORT), '--dir', __dirname, '--host', '127.0.0.1'], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    await new Promise((resolve, reject) => {
+      serverProcess.stdout.on('data', (data) => {
+        if (data.toString().includes('http://')) resolve()
+      })
+      serverProcess.on('error', reject)
+      setTimeout(() => reject(new Error('Server did not start in time')), 10000)
+    })
+  })
+
+  afterAll(async () => {
+    if (serverProcess) {
+      const exited = new Promise((resolve, reject) => {
+        serverProcess.on('close', resolve)
+        setTimeout(() => {
+          serverProcess.kill('SIGKILL')
+          reject(new Error('Server did not exit within 5s after SIGTERM'))
+        }, 5000)
+      })
+      serverProcess.kill('SIGTERM')
+      await exited
+    }
+  })
+
+  it('serve --help shows options', () => {
+    const output = runSync('serve --help')
+    expect(output).toContain('-d, --dir')
+    expect(output).toContain('--port')
+    expect(output).toContain('--host')
+    expect(output).toContain('--watch')
+    expect(output).toContain('--theme')
+  })
+
+  it('serves directory listing at root', async () => {
+    const res = await fetch(`${BASE_URL}/`)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('text/html')
+    const body = await res.text()
+    expect(body).toContain('Index of /')
+    expect(body).toContain('test1.md')
+    expect(body).toContain('test2.md')
+  })
+
+  it('serves .md file as HTML', async () => {
+    const res = await fetch(`${BASE_URL}/test1.md`)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('text/html')
+    const body = await res.text()
+    expect(body).toContain('<!DOCTYPE html>')
+    expect(body).toContain('<svg')
+  })
+
+  it('serves extensionless URL as .md', async () => {
+    const res = await fetch(`${BASE_URL}/test1`)
+    expect(res.status).toBe(200)
+    const body = await res.text()
+    expect(body).toContain('<!DOCTYPE html>')
+  })
+
+  it('returns 304 on matching ETag', async () => {
+    const res1 = await fetch(`${BASE_URL}/test1`)
+    const etag = res1.headers.get('etag')
+    expect(etag).toBeTruthy()
+    const res2 = await fetch(`${BASE_URL}/test1`, {
+      headers: { 'If-None-Match': etag },
+    })
+    expect(res2.status).toBe(304)
+  })
+
+  it('returns 404 for missing file', async () => {
+    const res = await fetch(`${BASE_URL}/nonexistent`)
+    expect(res.status).toBe(404)
+  })
+
+  it('blocks path traversal', async () => {
+    const res = await fetch(`${BASE_URL}/%2e%2e/package.json`)
+    expect([403, 404]).toContain(res.status)
+  })
+
+  it('returns 404 for non-.md static files', async () => {
+    const res = await fetch(`${BASE_URL}/memd.test.js`)
+    expect(res.status).toBe(404)
+  })
+
+  it('handles concurrent rendering without blocking', async () => {
+    const urls = [
+      `${BASE_URL}/test1.md`,
+      `${BASE_URL}/test2.md`,
+      `${BASE_URL}/test1`,
+      `${BASE_URL}/test2`,
+    ]
+    const results = await Promise.all(urls.map(u => fetch(u)))
+    for (const res of results) {
+      expect(res.status).toBe(200)
+      const body = await res.text()
+      expect(body).toContain('<!DOCTYPE html>')
+    }
+  })
+
+  // 4a. Static file serving
+  it('serves image files with correct Content-Type', async () => {
+    const res = await fetch(`${BASE_URL}/pixel.png`)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toBe('image/png')
+  })
+
+  it('returns ETag header for static files', async () => {
+    const res = await fetch(`${BASE_URL}/pixel.png`)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('etag')).toBeTruthy()
+  })
+
+  it('returns 304 on matching ETag for static files', async () => {
+    const res1 = await fetch(`${BASE_URL}/pixel.png`)
+    const etag = res1.headers.get('etag')
+    expect(etag).toBeTruthy()
+    const res2 = await fetch(`${BASE_URL}/pixel.png`, {
+      headers: { 'If-None-Match': etag },
+    })
+    expect(res2.status).toBe(304)
+  })
+
+  // 4b. Worker error recovery
+  it('server continues to respond after an error', async () => {
+    const res1 = await fetch(`${BASE_URL}/test1`)
+    expect(res1.status).toBe(200)
+    await res1.text()
+    const res2 = await fetch(`${BASE_URL}/nonexistent-error-test`)
+    expect(res2.status).toBe(404)
+    await res2.text()
+    const res3 = await fetch(`${BASE_URL}/test1`)
+    expect(res3.status).toBe(200)
+    const body = await res3.text()
+    expect(body).toContain('<!DOCTYPE html>')
+  })
+
+  // 4c. Cache behavior
+  it('second request for same .md returns same ETag (cache hit)', async () => {
+    const res1 = await fetch(`${BASE_URL}/test1`)
+    await res1.text()
+    const etag1 = res1.headers.get('etag')
+    const res2 = await fetch(`${BASE_URL}/test1`)
+    await res2.text()
+    const etag2 = res2.headers.get('etag')
+    expect(etag1).toBeTruthy()
+    expect(etag1).toBe(etag2)
+  })
+
+  it('modified .md file returns updated content (cache invalidation)', async () => {
+    const tmpFile = path.join(__dirname, 'test-cache-tmp.md')
+    fs.writeFileSync(tmpFile, '# Original')
+    try {
+      const res1 = await fetch(`${BASE_URL}/test-cache-tmp`)
+      expect(res1.status).toBe(200)
+      const body1 = await res1.text()
+      expect(body1).toContain('Original')
+      await new Promise(r => setTimeout(r, 50))
+      fs.writeFileSync(tmpFile, '# Updated')
+      const res2 = await fetch(`${BASE_URL}/test-cache-tmp`)
+      expect(res2.status).toBe(200)
+      const body2 = await res2.text()
+      expect(body2).toContain('Updated')
+    } finally {
+      fs.unlinkSync(tmpFile)
+    }
+  })
+
+  // 4d. Non-watch mode SSE
+  it('non-watch mode returns 404 for /_memd/events', async () => {
+    const res = await fetch(`${BASE_URL}/_memd/events`)
+    expect(res.status).toBe(404)
+  })
+
+  // 4f. Directory redirect
+  it('directory without trailing slash returns 302', async () => {
+    const tmpDir = path.join(__dirname, 'tmpsubdir')
+    fs.mkdirSync(tmpDir, { recursive: true })
+    try {
+      const res = await fetch(`${BASE_URL}/tmpsubdir`, { redirect: 'manual' })
+      expect(res.status).toBe(302)
+      expect(res.headers.get('location')).toBe('/tmpsubdir/')
+    } finally {
+      fs.rmdirSync(tmpDir)
+    }
+  })
+
+  // 4g. Path traversal vectors
+  it('../ encoded traversal returns 403 or 404', async () => {
+    const res = await fetch(`${BASE_URL}/%2e%2e/package.json`)
+    expect([403, 404]).toContain(res.status)
+  })
+
+  it('..%2f encoded traversal returns 403 or 404', async () => {
+    const res = await fetch(`${BASE_URL}/..%2fpackage.json`)
+    expect([403, 404]).toContain(res.status)
+  })
+
+  it('null byte in URL path returns 400 or 403', async () => {
+    const res = await fetch(`${BASE_URL}/test%00.md`)
+    expect([400, 403]).toContain(res.status)
+  })
+
+  // Sidebar
+  it('.md file response contains sidebar', async () => {
+    const res = await fetch(`${BASE_URL}/test1.md`)
+    const body = await res.text()
+    expect(body).toContain('memd-sidebar')
+    expect(body).toContain('memd-layout')
+    expect(body).toContain('aria-current="page"')
+  })
+
+  // isDotPath design: '..' allowed by isDotPath, caught by resolveServePath
+  describe('isDotPath and resolveServePath interaction', () => {
+    it('isDotPath allows .. (traversal caught by resolveServePath)', async () => {
+      const res = await fetch(`${BASE_URL}/../package.json`)
+      expect([403, 404]).toContain(res.status)
+    })
+
+    it('isDotPath blocks dotfiles like .hidden', async () => {
+      const res = await fetch(`${BASE_URL}/.hidden`)
+      expect(res.status).toBe(403)
+    })
+
+    it('isDotPath blocks .git paths', async () => {
+      const res = await fetch(`${BASE_URL}/.git/config`)
+      expect(res.status).toBe(403)
+    })
+  })
+})
+
+// 4d. Watch mode SSE
+describe('memd serve --watch', () => {
+  const WATCH_PORT = 19877
+  const WATCH_URL = `http://127.0.0.1:${WATCH_PORT}`
+  let watchProcess
+
+  beforeAll(async () => {
+    watchProcess = spawn('node', [MAIN, 'serve', '--port', String(WATCH_PORT), '--dir', __dirname, '--host', '127.0.0.1', '--watch'], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    await new Promise((resolve, reject) => {
+      watchProcess.stdout.on('data', (data) => {
+        if (data.toString().includes('http://')) resolve()
+      })
+      watchProcess.on('error', reject)
+      setTimeout(() => reject(new Error('Watch server did not start in time')), 10000)
+    })
+  })
+
+  afterAll(async () => {
+    if (watchProcess) {
+      const exited = new Promise((resolve, reject) => {
+        watchProcess.on('close', resolve)
+        setTimeout(() => {
+          watchProcess.kill('SIGKILL')
+          reject(new Error('Watch server did not exit within 5s after SIGTERM'))
+        }, 5000)
+      })
+      watchProcess.kill('SIGTERM')
+      await exited
+    }
+  })
+
+  it('/_memd/events returns text/event-stream content type', async () => {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 3000)
+    try {
+      const res = await fetch(`${WATCH_URL}/_memd/events`, { signal: controller.signal })
+      expect(res.status).toBe(200)
+      expect(res.headers.get('content-type')).toBe('text/event-stream')
+    } finally {
+      clearTimeout(timeout)
+      controller.abort()
+    }
+  })
+})
+
