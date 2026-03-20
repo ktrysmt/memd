@@ -26,7 +26,7 @@ function runSync(args) {
 describe('memd CLI', () => {
   it.concurrent('--version', async () => {
     const output = await run(['-v'])
-    expect(output).toContain('3.1.0')
+    expect(output).toContain('3.1.1')
   })
 
   it.concurrent('--help', async () => {
@@ -143,6 +143,20 @@ describe('memd CLI', () => {
     expect(output).toContain('Dumb Tr')
     // <br> tags should not appear in rendered output
     expect(output).not.toMatch(/<br\s*\/?>/)
+  })
+
+  it.concurrent('renders dotted.md (dotted arrow with spaced label)', async () => {
+    const output = await run(
+      ['--no-pager', '--no-color', '--width', '100', 'test/dotted.md'],
+    )
+    // Dotted arrow line character (unicode mode)
+    expect(output).toContain('\u2506')
+    // Edge label
+    expect(output).toContain('docker pull')
+    // Key nodes
+    expect(output).toContain('Push to GHCR')
+    expect(output).toContain('devcontainer up')
+    expect(output).toContain('Inside devcontainer')
   })
 
   it('reads markdown from stdin via shell', () => {

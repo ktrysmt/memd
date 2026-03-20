@@ -4,16 +4,13 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  beautiful-mermaid: npm:@ktrysmt/beautiful-mermaid@^1.1.4
-
 importers:
 
   .:
     dependencies:
       '@ktrysmt/beautiful-mermaid':
-        specifier: ^1.1.4
-        version: 1.1.4
+        specifier: 1.1.5
+        version: 1.1.5
       chalk:
         specifier: ^5.6.2
         version: 5.6.2
@@ -208,8 +205,8 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
-  '@ktrysmt/beautiful-mermaid@1.1.4':
-    resolution: {integrity: sha512-MQWW/zFf5Dio7b9DSQGaXPpnvUGcTFJnTiF83NmscSkcjwtGcpM3hszRMHHI3Mi5ej008vTgPCUCPCDL2bJCWA==}
+  '@ktrysmt/beautiful-mermaid@1.1.5':
+    resolution: {integrity: sha512-GjFUdDWiR+jf152ZSP/okaE1K+azlQ0ZjH0HFmJhL0cvw8a4b+kw7ZYKAHn8SVKGzOTBbJeJDUNCyD+vTKtnMA==}
 
   '@rollup/rollup-android-arm-eabi@4.59.0':
     resolution: {integrity: sha512-upnNBkA6ZH2VKGcBj9Fyl9IGNPULcjXRlg0LLeaioQWueH30p6IXtJEbKAgvyv+mJaMxSm1l6xwDXYjpEMiLMg==}
@@ -1143,7 +1140,7 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
-  '@ktrysmt/beautiful-mermaid@1.1.4':
+  '@ktrysmt/beautiful-mermaid@1.1.5':
     dependencies:
       elkjs: 0.11.1
       entities: 7.0.1
