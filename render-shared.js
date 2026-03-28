@@ -3,6 +3,8 @@ import { Marked } from 'marked';
 import { renderMermaidSVG } from '@ktrysmt/beautiful-mermaid';
 import { escapeHtml, resolveThemeColors } from './render-utils.js';
 
+export const WIDTH_TOGGLE_SCRIPT = "(function(){var b=document.body,btn=document.querySelector('.memd-width-toggle');if(!btn)return;var sb=document.querySelector('.memd-sidebar');if(sb){sb.insertBefore(btn,sb.firstChild);btn.style.position='static';btn.style.margin='0 0 0.5rem 0';btn.style.width='100%'}function u(){btn.textContent=b.classList.contains('memd-full-width')?'Full':'Smart'}if(localStorage.getItem('memd-width')==='full')b.classList.add('memd-full-width');u();btn.onclick=function(){b.classList.toggle('memd-full-width');localStorage.setItem('memd-width',b.classList.contains('memd-full-width')?'full':'smart');u()}})();";
+
 export const MERMAID_MODAL_SCRIPT = [
   "document.addEventListener('click',function(e){var d=e.target.closest('.mermaid-diagram');if(d){var o=document.createElement('div');o.className='mermaid-modal';o.innerHTML=d.querySelector('svg').outerHTML;o.onclick=function(){o.remove()};document.body.appendChild(o)}});",
   "document.addEventListener('keydown',function(e){if(e.key==='Escape'){var m=document.querySelector('.mermaid-modal');if(m)m.remove()}});",
@@ -66,7 +68,12 @@ export function renderToHTML(markdown, diagramColors) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${title ? `<title>${escapeHtml(title)}</title>` : ''}
 <style>
-body { background: ${t.bg}; color: ${t.fg}; font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+body { background: ${t.bg}; color: ${t.fg}; font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; max-width: 70%; margin: 0 auto; padding: 2rem 1rem; }
+@media (max-width: 1024px) { body { max-width: 85%; } }
+@media (max-width: 768px) { body { max-width: 100%; } }
+body.memd-full-width { max-width: none; margin: 0; }
+.memd-width-toggle { position: fixed; top: 0.5rem; left: 0.5rem; z-index: 11; background: color-mix(in srgb, ${t.fg} 8%, ${t.bg}); border: 1px solid ${t.line}; color: ${t.muted}; padding: 0.2rem 0.6rem; cursor: pointer; border-radius: 4px; font-size: 0.75rem; }
+.memd-width-toggle:hover { background: color-mix(in srgb, ${t.fg} 15%, ${t.bg}); }
 a { color: ${t.accent}; }
 hr { border-color: ${t.line}; }
 blockquote { border-left: 3px solid ${t.line}; color: ${t.muted}; padding-left: 1rem; }
@@ -85,6 +92,7 @@ th { background: color-mix(in srgb, ${t.fg} 5%, ${t.bg}); }
 <!--memd:head-->
 </head>
 <body>
+<button class="memd-width-toggle" aria-label="Toggle width"></button>
 <!--memd:content-->
 ${body.trimEnd()}
 <!--/memd:content-->

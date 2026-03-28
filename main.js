@@ -622,10 +622,12 @@ async function main() {
 
       if (options.html) {
         // 3a. HTML path
-        const { renderToHTML, MERMAID_MODAL_SCRIPT } = await import('./render-shared.js');
+        const { renderToHTML, MERMAID_MODAL_SCRIPT, WIDTH_TOGGLE_SCRIPT } = await import('./render-shared.js');
         const combined = markdownParts.join('\n\n');
         let html = renderToHTML(combined, diagramColors);
-        html = html.replace('<!--memd:scripts-->', html.includes('mermaid-diagram') ? `<script>${MERMAID_MODAL_SCRIPT}</script>` : '');
+        let inlineScripts = WIDTH_TOGGLE_SCRIPT;
+        if (html.includes('mermaid-diagram')) inlineScripts += MERMAID_MODAL_SCRIPT;
+        html = html.replace('<!--memd:scripts-->', `<script>${inlineScripts}</script>`);
         process.stdout.write(html);
       } else {
         // 3b. Terminal path
@@ -763,7 +765,7 @@ async function main() {
         console.error('Invalid --workers: must be a positive integer');
         process.exit(1);
       }
-      const { MERMAID_MODAL_SCRIPT: mermaidModalScript } = await import('./render-shared.js');
+      const { MERMAID_MODAL_SCRIPT: mermaidModalScript, WIDTH_TOGGLE_SCRIPT: widthToggleScript } = await import('./render-shared.js');
       const poolSize = options.workers ?? Math.min(Math.max(1, os.cpus().length - 1), 4);
       const workerPath = new URL('./render-worker.js', import.meta.url);
       const pool = createRenderPool(workerPath, poolSize, {
@@ -873,7 +875,10 @@ async function main() {
 .memd-sidebar a { color: ${t.accent}; text-decoration: none; display: block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.9rem; }
 .memd-sidebar a:hover { background: color-mix(in srgb, ${t.fg} 5%, ${t.bg}); }
 .memd-sidebar a[aria-current="page"] { background: color-mix(in srgb, ${t.accent} 12%, ${t.bg}); }
-.memd-content { max-width: 800px; padding: 2rem 1rem; }
+.memd-content { max-width: 70%; padding: 2rem 1rem; margin: 0 auto; }
+@media (max-width: 1024px) { .memd-content { max-width: 85%; } }
+@media (max-width: 768px) { .memd-content { max-width: 100%; } }
+body.memd-full-width .memd-content { max-width: none; margin: 0; }
 body:has(.memd-layout) { max-width: none; margin: 0; padding: 0; }
 .memd-hamburger { display: none; position: fixed; top: 0.5rem; left: 0.5rem; z-index: 10; background: color-mix(in srgb, ${t.fg} 8%, ${t.bg}); border: 1px solid ${t.line}; color: ${t.fg}; padding: 0.3rem 0.5rem; cursor: pointer; border-radius: 4px; font-size: 1.2rem; }
 @media (max-width: 768px) {
@@ -896,7 +901,7 @@ body:has(.memd-layout) { max-width: none; margin: 0; padding: 0; }
           res.end();
           return;
         }
-        let scripts = '';
+        let scripts = widthToggleScript;
         if (options.watch) {
           scripts += 'new EventSource("/_memd/events").onmessage=function(){location.reload()};';
         }
