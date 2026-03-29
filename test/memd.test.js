@@ -200,6 +200,20 @@ describe('memd CLI', () => {
       expect(output).toMatch(/id="m1-/)
     })
 
+    it('--html contains segmented width toggle with Smart/Full buttons', () => {
+      const output = runSync(['--html', 'test/test1.md'])
+      // Segmented toggle container
+      expect(output).toContain('class="memd-width-toggle"')
+      // Two buttons with data-mode attributes
+      expect(output).toContain('class="memd-wt-btn" data-mode="smart"')
+      expect(output).toContain('class="memd-wt-btn" data-mode="full"')
+      // SVG icons present in each button
+      const btnMatches = output.match(/memd-wt-btn/g)
+      expect(btnMatches.length).toBeGreaterThanOrEqual(4) // 2 in HTML + 2+ in CSS
+      // Toggle script sets active class
+      expect(output).toContain("classList.toggle('active'")
+    })
+
     it('--html + multiple files -> combined single HTML', () => {
       const output = runSync(['--html', 'test/test1.md', 'test/test2.md'])
       expect(output).toContain('<!DOCTYPE html>')

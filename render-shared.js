@@ -3,7 +3,7 @@ import { Marked } from 'marked';
 import { renderMermaidSVG } from '@ktrysmt/beautiful-mermaid';
 import { escapeHtml, resolveThemeColors } from './render-utils.js';
 
-export const WIDTH_TOGGLE_SCRIPT = "(function(){var b=document.body,btn=document.querySelector('.memd-width-toggle');if(!btn)return;var sb=document.querySelector('.memd-sidebar');if(sb){sb.insertBefore(btn,sb.firstChild);btn.style.position='static';btn.style.margin='0 0 0.5rem 0';btn.style.width='100%'}function u(){btn.textContent=b.classList.contains('memd-full-width')?'Full':'Smart'}if(localStorage.getItem('memd-width')==='full')b.classList.add('memd-full-width');u();btn.onclick=function(){b.classList.toggle('memd-full-width');localStorage.setItem('memd-width',b.classList.contains('memd-full-width')?'full':'smart');u()}})();";
+export const WIDTH_TOGGLE_SCRIPT = "(function(){var b=document.body,g=document.querySelector('.memd-width-toggle');if(!g)return;var sb=document.querySelector('.memd-sidebar');if(sb){sb.insertBefore(g,sb.firstChild);g.style.position='static';g.style.margin='0 0 0.5rem 0';g.style.width='auto'}var btns=g.querySelectorAll('.memd-wt-btn');function u(){var f=b.classList.contains('memd-full-width');btns.forEach(function(n){n.classList.toggle('active',n.dataset.mode===(f?'full':'smart'))})}if(localStorage.getItem('memd-width')==='full')b.classList.add('memd-full-width');u();btns.forEach(function(n){n.onclick=function(){if(n.dataset.mode==='full'){b.classList.add('memd-full-width');localStorage.setItem('memd-width','full')}else{b.classList.remove('memd-full-width');localStorage.setItem('memd-width','smart')}u()}})})();";
 
 export const MERMAID_MODAL_SCRIPT = [
   "document.addEventListener('click',function(e){var d=e.target.closest('.mermaid-diagram');if(d){var o=document.createElement('div');o.className='mermaid-modal';o.innerHTML=d.querySelector('svg').outerHTML;o.onclick=function(){o.remove()};document.body.appendChild(o)}});",
@@ -72,8 +72,12 @@ body { background: ${t.bg}; color: ${t.fg}; font-family: system-ui, -apple-syste
 @media (max-width: 1024px) { body { max-width: 85%; } }
 @media (max-width: 768px) { body { max-width: 100%; } }
 body.memd-full-width { max-width: none; margin: 0; }
-.memd-width-toggle { position: fixed; top: 0.5rem; left: 0.5rem; z-index: 11; background: color-mix(in srgb, ${t.fg} 8%, ${t.bg}); border: 1px solid ${t.line}; color: ${t.muted}; padding: 0.2rem 0.6rem; cursor: pointer; border-radius: 4px; font-size: 0.75rem; }
-.memd-width-toggle:hover { background: color-mix(in srgb, ${t.fg} 15%, ${t.bg}); }
+.memd-width-toggle { position: fixed; top: 0.5rem; left: 0.5rem; z-index: 11; display: inline-flex; border-radius: 6px; overflow: hidden; border: 1px solid ${t.line}; font-size: 0; }
+.memd-wt-btn { background: color-mix(in srgb, ${t.fg} 5%, ${t.bg}); border: none; color: ${t.muted}; padding: 0.25rem 0.5rem; cursor: pointer; font-size: 0.7rem; display: inline-flex; align-items: center; gap: 0.25rem; line-height: 1; }
+.memd-wt-btn + .memd-wt-btn { border-left: 1px solid ${t.line}; }
+.memd-wt-btn:hover { background: color-mix(in srgb, ${t.fg} 12%, ${t.bg}); }
+.memd-wt-btn.active { background: color-mix(in srgb, ${t.accent} 18%, ${t.bg}); color: ${t.accent}; }
+.memd-wt-btn svg { width: 12px; height: 12px; flex-shrink: 0; }
 a { color: ${t.accent}; }
 hr { border-color: ${t.line}; }
 blockquote { border-left: 3px solid ${t.line}; color: ${t.muted}; padding-left: 1rem; }
@@ -92,7 +96,7 @@ th { background: color-mix(in srgb, ${t.fg} 5%, ${t.bg}); }
 <!--memd:head-->
 </head>
 <body>
-<button class="memd-width-toggle" aria-label="Toggle width"></button>
+<div class="memd-width-toggle" role="group" aria-label="Width toggle"><button class="memd-wt-btn" data-mode="smart"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8h5m4 0h5"/><path d="M4 5l3 3-3 3m8-6l-3 3 3 3"/></svg>Smart</button><button class="memd-wt-btn" data-mode="full"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8h14"/><path d="M4 5L1 8l3 3m8-6l3 3-3 3"/></svg>Full</button></div>
 <!--memd:content-->
 ${body.trimEnd()}
 <!--/memd:content-->
