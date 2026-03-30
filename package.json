@@ -1,6 +1,6 @@
 {
   "name": "memd-cli",
-  "version": "3.5.0",
+  "version": "3.5.1",
   "type": "module",
   "main": "main.js",
   "bin": {
@@ -30,10 +30,20 @@
     "tuistory": "^0.0.16",
     "vitest": "^4.0.18"
   },
+  "overrides": {
+    "marked-terminal": {
+      "marked": "$marked"
+    }
+  },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
       "node-pty"
-    ]
+    ],
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "marked-terminal>marked": ">=17"
+      }
+    }
   }
 }

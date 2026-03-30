@@ -26,7 +26,7 @@ function runSync(args) {
 describe('memd CLI', () => {
   it.concurrent('--version', async () => {
     const output = await run(['-v'])
-    expect(output).toContain('3.5.0')
+    expect(output).toContain('3.5.1')
   })
 
   it.concurrent('--help', async () => {
@@ -386,6 +386,143 @@ describe('memd CLI', () => {
     }).trim()
     expect(output).toContain('fn main')
     expect(output).not.toContain('Could not find the language')
+  })
+
+  // marked v17 + marked-terminal v7 integration tests
+  // Exercises marked-terminal renderer paths that could break on marked major version changes
+  describe('marked-terminal renderer integration (marked v17)', () => {
+    it('renders unordered lists', () => {
+      const out = execSync(`node ${MAIN} --no-pager --no-color --width 80`, {
+        encoding: 'utf-8',
+        timeout: 15000,
+        input: '- Item A\n- Item B\n- Item C\n',
+      }).trim()
+      expect(out).toContain('Item A')
+      expect(out).toContain('Item B')
+      expect(out).toContain('Item C')
+    })
+
+    it('renders ordered lists', () => {
+      const out = execSync(`node ${MAIN} --no-pager --no-color --width 80`, {
+        encoding: 'utf-8',
+        timeout: 15000,
+        input: '1. First\n2. Second\n3. Third\n',
+      }).trim()
+      expect(out).toContain('First')
+      expect(out).toContain('Second')
+      expect(out).toContain('Third')
+    })
+
+    it('renders links as text with URL', () => {
+      const out = execSync(`node ${MAIN} --no-pager --no-color --width 80`, {
+        encoding: 'utf-8',
+        timeout: 15000,
+        input: 'Visit [Example](https://example.com) for more.\n',
+      }).trim()
+      expect(out).toContain('Example')
+      expect(out).toContain('https://example.com')
+    })
+
+    it('renders blockquotes', () => {
+      const out = execSync(`node ${MAIN} --no-pager --no-color --width 80`, {
+        encoding: 'utf-8',
+        timeout: 15000,
+        input: '> This is a quote\n> spanning lines\n',
+      }).trim()
+      expect(out).toContain('This is a quote')
+      expect(out).toContain('spanning lines')
+    })
+
+    it('renders tables', () => {
+      const out = execSync(`node ${MAIN} --no-pager --no-color --width 80`, {
+        encoding: 'utf-8',
+        timeout: 15000,
+        input: '| Name | Age |\n|------|-----|\n| Alice | 30 |\n| Bob | 25 |\n',
+      }).trim()
+      expect(out).toContain('Name')
+      expect(out).toContain('Age')
+      expect(out).toContain('Alice')
+      expect(out).toContain('Bob')
+    })
+
+    it('renders inline code', () => {
+      const out = execSync(`node ${MAIN} --no-pager --no-color --width 80`, {
+        encoding: 'utf-8',
+        timeout: 15000,
+        input: 'Use `console.log()` for debugging.\n',
+      }).trim()
+      expect(out).toContain('console.log()')
+    })
+
+    it('renders bold and italic', () => {
+      const out = execSync(`node ${MAIN} --no-pager --no-color --width 80`, {
+        encoding: 'utf-8',
+        timeout: 15000,
+        input: 'This is **bold** and *italic* text.\n',
+      }).trim()
+      expect(out).toContain('bold')
+      expect(out).toContain('italic')
+    })
+
+    it('renders horizontal rule', () => {
+      const out = execSync(`node ${MAIN} --no-pager --no-color --width 80`, {
+        encoding: 'utf-8',
+        timeout: 15000,
+        input: 'Above\n\n---\n\nBelow\n',
+      }).trim()
+      expect(out).toContain('Above')
+      expect(out).toContain('Below')
+      // Horizontal rule should produce some separator between Above and Below
+      const aboveIdx = out.indexOf('Above')
+      const belowIdx = out.indexOf('Below')
+      expect(belowIdx).toBeGreaterThan(aboveIdx)
+    })
+
+    it('renders nested lists', () => {
+      const out = execSync(`node ${MAIN} --no-pager --no-color --width 80`, {
+        encoding: 'utf-8',
+        timeout: 15000,
+        input: '- Parent\n  - Child A\n  - Child B\n- Sibling\n',
+      }).trim()
+      expect(out).toContain('Parent')
+      expect(out).toContain('Child A')
+      expect(out).toContain('Child B')
+      expect(out).toContain('Sibling')
+    })
+
+    it('renders complex document with mixed elements', () => {
+      const input = [
+        '# Title',
+        '',
+        'A paragraph with **bold**, *italic*, and `code`.',
+        '',
+        '> A blockquote',
+        '',
+        '- List item 1',
+        '- List item 2',
+        '',
+        '| Col1 | Col2 |',
+        '|------|------|',
+        '| A    | B    |',
+        '',
+        '---',
+        '',
+        'Final paragraph.',
+      ].join('\n')
+      const out = execSync(`node ${MAIN} --no-pager --no-color --width 80`, {
+        encoding: 'utf-8',
+        timeout: 15000,
+        input,
+      }).trim()
+      expect(out).toContain('Title')
+      expect(out).toContain('bold')
+      expect(out).toContain('italic')
+      expect(out).toContain('code')
+      expect(out).toContain('blockquote')
+      expect(out).toContain('List item 1')
+      expect(out).toContain('Col1')
+      expect(out).toContain('Final paragraph')
+    })
   })
 })
 
