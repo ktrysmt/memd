@@ -1,7 +1,42 @@
 import crypto from 'node:crypto';
 import { Marked } from 'marked';
 import { renderMermaidSVG } from '@ktrysmt/beautiful-mermaid';
+import { createHighlighterCoreSync } from 'shiki/core';
+import { createJavaScriptRegexEngine } from 'shiki/engine/javascript';
+import { bundledThemes } from 'shiki/themes';
+import { bundledLanguages } from 'shiki/langs';
 import { escapeHtml, resolveThemeColors } from './render-utils.js';
+
+const SHIKI_THEME_IDS = [
+  'nord', 'dracula', 'one-dark-pro',
+  'github-dark', 'github-light',
+  'solarized-dark', 'solarized-light',
+  'catppuccin-mocha', 'catppuccin-latte',
+  'tokyo-night', 'one-light',
+  'everforest-light', 'min-dark', 'min-light',
+];
+
+const SHIKI_LANG_IDS = [
+  'javascript', 'typescript', 'python', 'shellscript',
+  'go', 'rust', 'java', 'c', 'cpp',
+  'ruby', 'php', 'html', 'css', 'json',
+  'yaml', 'toml', 'sql', 'markdown', 'diff',
+];
+
+let _hl = null;
+
+export async function initHighlighter() {
+  if (_hl) return;
+  const [themes, langs] = await Promise.all([
+    Promise.all(SHIKI_THEME_IDS.map(id => bundledThemes[id]().then(m => m.default))),
+    Promise.all(SHIKI_LANG_IDS.map(id => bundledLanguages[id]().then(m => m.default))),
+  ]);
+  _hl = createHighlighterCoreSync({
+    themes,
+    langs,
+    engine: createJavaScriptRegexEngine(),
+  });
+}
 
 export const WIDTH_TOGGLE_SCRIPT = "(function(){var b=document.body,g=document.querySelector('.memd-width-toggle');if(!g)return;var sb=document.querySelector('.memd-sidebar');if(sb){sb.insertBefore(g,sb.firstChild);g.style.position='static';g.style.margin='0 0 0.5rem 0';g.style.width='auto'}var btns=g.querySelectorAll('.memd-wt-btn');function u(){var f=b.classList.contains('memd-full-width');btns.forEach(function(n){n.classList.toggle('active',n.dataset.mode===(f?'full':'smart'))})}if(localStorage.getItem('memd-width')==='full')b.classList.add('memd-full-width');u();btns.forEach(function(n){n.onclick=function(){if(n.dataset.mode==='full'){b.classList.add('memd-full-width');localStorage.setItem('memd-width','full')}else{b.classList.remove('memd-full-width');localStorage.setItem('memd-width','smart')}u()}})})();";
 
@@ -35,7 +70,7 @@ const htmlMarked = new Marked();
 // JavaScript in markdown IS executable via inline HTML. This is intentional for a
 // development-only tool; CSS/HTML authoring in markdown is a useful feature.
 // The serve path mitigates XSS via CSP nonce-based script-src.
-export function renderToHTML(markdown, diagramColors) {
+export function renderToHTML(markdown, diagramColors, shikiTheme) {
   const processed = convertMermaidToSVG(markdown, diagramColors);
   // Protect trusted SVGs/error blocks from HTML sanitization by replacing with placeholders
   const nonce = crypto.randomUUID();
@@ -45,7 +80,23 @@ export function renderToHTML(markdown, diagramColors) {
     svgStore.push(match);
     return `MEMD_SVG_${nonce}_${id}`;
   });
-  let body = htmlMarked.parse(withPlaceholders);
+  let markedInstance = htmlMarked;
+  if (shikiTheme && _hl) {
+    markedInstance = new Marked();
+    markedInstance.use({
+      renderer: {
+        code({ text, lang }) {
+          const loadedLangs = _hl.getLoadedLanguages();
+          const effectiveLang = (lang && loadedLangs.includes(lang)) ? lang : null;
+          if (effectiveLang) {
+            return _hl.codeToHtml(text, { lang: effectiveLang, theme: shikiTheme });
+          }
+          return `<pre><code class="language-${escapeHtml(lang || '')}">${escapeHtml(text)}</code></pre>`;
+        }
+      }
+    });
+  }
+  let body = markedInstance.parse(withPlaceholders);
   // Restore SVGs and wrap Mermaid diagrams in scrollable containers
   for (let i = 0; i < svgStore.length; i++) {
     const stored = svgStore[i];
@@ -85,9 +136,11 @@ svg { max-width: 100%; height: auto; }
 .mermaid-diagram { cursor: zoom-in; text-align: center; }
 .mermaid-modal { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: zoom-out; padding: 2rem; }
 .mermaid-modal svg { max-width: calc(100vw - 4rem); max-height: calc(100vh - 4rem); }
-pre { background: color-mix(in srgb, ${t.fg} 8%, ${t.bg}); padding: 1rem; border-radius: 6px; overflow-x: auto; }
-code { font-size: 0.9em; color: ${t.accent}; }
-pre code { color: inherit; }
+pre { background: color-mix(in srgb, ${t.fg} 8%, ${t.bg}); padding: 1rem; border-radius: 6px; overflow-x: auto; border: 1px solid ${t.line}; }
+code { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.95rem; color: ${t.accent}; background: color-mix(in srgb, ${t.fg} 8%, ${t.bg}); padding: 0.15em 0.35em; border-radius: 3px; }
+pre code { color: inherit; background: none; padding: 0; border-radius: 0; font-size: 0.95rem; }
+pre.shiki { padding: 1rem; border-radius: 6px; overflow-x: auto; border: 1px solid ${t.line}; }
+pre.shiki code { font-size: 0.95rem; }
 table { border-collapse: collapse; }
 th, td { border: 1px solid ${t.line}; padding: 0.4rem 0.8rem; }
 th { background: color-mix(in srgb, ${t.fg} 5%, ${t.bg}); }

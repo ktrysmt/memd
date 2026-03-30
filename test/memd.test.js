@@ -26,7 +26,7 @@ function runSync(args) {
 describe('memd CLI', () => {
   it.concurrent('--version', async () => {
     const output = await run(['-v'])
-    expect(output).toContain('3.4.0')
+    expect(output).toContain('3.5.0')
   })
 
   it.concurrent('--help', async () => {
@@ -223,6 +223,18 @@ describe('memd CLI', () => {
       // Only one HTML document
       const doctypeCount = (output.match(/<!DOCTYPE html>/g) || []).length
       expect(doctypeCount).toBe(1)
+    })
+
+    it('--html highlights code blocks with shiki', () => {
+      const output = runSync(['--html', 'test/test-highlight.md'])
+      expect(output).toContain('class="shiki')
+      // Shiki outputs styled spans with color
+      expect(output).toMatch(/style="[^"]*color/)
+    })
+
+    it('--html --theme dracula highlights code with shiki', () => {
+      const output = runSync(['--html', '--theme', 'dracula', 'test/test-highlight.md'])
+      expect(output).toContain('class="shiki')
     })
   })
 

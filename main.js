@@ -281,7 +281,7 @@ function createRenderPool(workerPath, poolSize, opts = {}) {
     return -1;
   }
 
-  function dispatch(workerIndex, markdown, diagramColors) {
+  function dispatch(workerIndex, markdown, diagramColors, shikiTheme) {
     const id = nextId;
     nextId = (nextId + 1) % Number.MAX_SAFE_INTEGER;
     return new Promise((resolve, reject) => {
@@ -292,7 +292,7 @@ function createRenderPool(workerPath, poolSize, opts = {}) {
         reject(new Error('Render timed out'));
       }, RENDER_TIMEOUT_MS);
       activeRequest.set(workerIndex, { id, resolve, reject, timer });
-      workers[workerIndex].postMessage({ id, markdown, diagramColors });
+      workers[workerIndex].postMessage({ id, markdown, diagramColors, shikiTheme });
     });
   }
 
@@ -302,7 +302,7 @@ function createRenderPool(workerPath, poolSize, opts = {}) {
       if (idx === -1) break;
       const entry = waitQueue.shift();
       clearTimeout(entry.timer);
-      dispatch(idx, entry.markdown, entry.diagramColors).then(entry.resolve, entry.reject);
+      dispatch(idx, entry.markdown, entry.diagramColors, entry.shikiTheme).then(entry.resolve, entry.reject);
     }
   }
 
@@ -362,13 +362,13 @@ function createRenderPool(workerPath, poolSize, opts = {}) {
   recoveryTimer.unref();
 
   return {
-    render(markdown, diagramColors) {
+    render(markdown, diagramColors, shikiTheme) {
       if (deadWorkers.size + terminatingWorkers.size >= workers.length) {
         recoverDeadWorkers(true);
       }
       const idx = findAvailableWorker();
       if (idx !== -1) {
-        return dispatch(idx, markdown, diagramColors);
+        return dispatch(idx, markdown, diagramColors, shikiTheme);
       }
       // waitQueue has no size limit. Each entry is small and has a timeout, so memory
       // growth is bounded by (concurrent requests * RENDER_TIMEOUT_MS). This is fine for
@@ -379,7 +379,7 @@ function createRenderPool(workerPath, poolSize, opts = {}) {
           if (pos !== -1) waitQueue.splice(pos, 1);
           reject(new Error('All workers are unavailable'));
         }, RENDER_TIMEOUT_MS);
-        waitQueue.push({ markdown, diagramColors, resolve, reject, timer });
+        waitQueue.push({ markdown, diagramColors, shikiTheme, resolve, reject, timer });
       });
     },
     terminate() {
@@ -622,9 +622,10 @@ async function main() {
 
       if (options.html) {
         // 3a. HTML path
-        const { renderToHTML, MERMAID_MODAL_SCRIPT, WIDTH_TOGGLE_SCRIPT } = await import('./render-shared.js');
+        const { renderToHTML, initHighlighter, MERMAID_MODAL_SCRIPT, WIDTH_TOGGLE_SCRIPT } = await import('./render-shared.js');
+        await initHighlighter();
         const combined = markdownParts.join('\n\n');
-        let html = renderToHTML(combined, diagramColors);
+        let html = renderToHTML(combined, diagramColors, themeEntry.shikiTheme);
         let inlineScripts = WIDTH_TOGGLE_SCRIPT;
         if (html.includes('mermaid-diagram')) inlineScripts += MERMAID_MODAL_SCRIPT;
         html = html.replace('<!--memd:scripts-->', `<script>${inlineScripts}</script>`);
@@ -1014,7 +1015,7 @@ body:has(.memd-layout) { max-width: none; margin: 0; padding: 0; }
                 if (Buffer.byteLength(md) > MD_MAX_SIZE) {
                   throw new Error(`File too large. Maximum size is ${MD_MAX_SIZE / 1024 / 1024} MB.`);
                 }
-                return pool.render(md, diagramColors);
+                return pool.render(md, diagramColors, themeEntry.shikiTheme);
               });
             inflight.set(inflightKey, renderPromise);
             try {
