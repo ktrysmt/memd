@@ -45,6 +45,10 @@ export const MERMAID_MODAL_SCRIPT = [
   "document.addEventListener('keydown',function(e){if(e.key==='Escape'){var m=document.querySelector('.mermaid-modal');if(m)m.remove()}});",
 ].join('');
 
+export const OUTLINE_SCRIPT = "(function(){var c=document.querySelector('.memd-content')||document.body;var o=document.querySelector('.memd-outline');if(!o)return;var hs=c.querySelectorAll('h1,h2,h3,h4,h5,h6');if(!hs.length){o.style.display='none';var btn=document.querySelector('.memd-toggle-outline');if(btn)btn.style.display='none';return}var ul=o.querySelector('ul');if(!ul)return;function ease(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2}function smoothScroll(el){var start=window.scrollY;var end=el.getBoundingClientRect().top+start-20;var dist=end-start;var dur=Math.min(400,Math.max(150,Math.abs(dist)*0.3));var t0=null;function step(ts){if(!t0)t0=ts;var p=Math.min((ts-t0)/dur,1);window.scrollTo(0,start+dist*ease(p));if(p<1)requestAnimationFrame(step)}requestAnimationFrame(step)}var items=[];hs.forEach(function(h,i){if(!h.id)h.id='heading-'+i;var lv=parseInt(h.tagName.charAt(1));var li=document.createElement('li');li.setAttribute('data-level',lv);var a=document.createElement('a');a.href='#'+h.id;a.textContent=h.textContent;a.onclick=function(e){e.preventDefault();smoothScroll(h);history.replaceState(null,null,'#'+h.id)};li.appendChild(a);ul.appendChild(li);items.push({el:h,link:a})});var ticking=false;function upd(){var sy=window.scrollY+80;var cur=null;for(var i=0;i<items.length;i++){if(items[i].el.offsetTop<=sy)cur=i}items.forEach(function(it,idx){it.link.classList.toggle('active',idx===cur)});ticking=false}window.addEventListener('scroll',function(){if(!ticking){requestAnimationFrame(upd);ticking=true}});upd()})();";
+
+export const PANEL_TOGGLE_SCRIPT = "(function(){var b=document.body;var sb=document.querySelector('.memd-toggle-sidebar');var s=document.querySelector('.memd-sidebar');if(sb&&s){var stored=localStorage.getItem('memd-sidebar');var isMobile=window.matchMedia('(max-width:768px)').matches;if(stored==='hidden'||(stored===null&&isMobile))b.classList.add('memd-sidebar-hidden');sb.onclick=function(){b.classList.toggle('memd-sidebar-hidden');localStorage.setItem('memd-sidebar',b.classList.contains('memd-sidebar-hidden')?'hidden':'visible')}}var ob=document.querySelector('.memd-toggle-outline');var o=document.querySelector('.memd-outline');if(ob&&o){if(localStorage.getItem('memd-outline')==='hidden')b.classList.add('memd-outline-hidden');ob.onclick=function(){b.classList.toggle('memd-outline-hidden');localStorage.setItem('memd-outline',b.classList.contains('memd-outline-hidden')?'hidden':'visible')}}})();";
+
 export function convertMermaidToSVG(markdown, diagramTheme) {
   const mermaidRegex = /```mermaid\s+([\s\S]+?)```/g;
   let svgIndex = 0;
@@ -145,6 +149,22 @@ table { border-collapse: collapse; }
 th, td { border: 1px solid ${t.line}; padding: 0.4rem 0.8rem; }
 th { background: color-mix(in srgb, ${t.fg} 5%, ${t.bg}); }
 .mermaid-error { background: color-mix(in srgb, ${t.accent} 10%, ${t.bg}); border: 1px solid color-mix(in srgb, ${t.accent} 40%, ${t.bg}); color: ${t.fg}; padding: 1rem; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; }
+.memd-outline { overflow-y: auto; font-size: 0.85rem; box-sizing: border-box; }
+.memd-outline ul { list-style: none; padding: 0; margin: 0; }
+.memd-outline li { padding: 0.1rem 0; }
+.memd-outline a { color: ${t.muted}; text-decoration: none; display: block; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.memd-outline a:hover { color: ${t.fg}; background: color-mix(in srgb, ${t.fg} 5%, ${t.bg}); }
+.memd-outline a.active { color: ${t.accent}; background: color-mix(in srgb, ${t.accent} 10%, ${t.bg}); }
+.memd-outline li[data-level="2"] { padding-left: 0.75rem; }
+.memd-outline li[data-level="3"] { padding-left: 1.5rem; }
+.memd-outline li[data-level="4"] { padding-left: 2.25rem; }
+.memd-outline li[data-level="5"] { padding-left: 3rem; }
+.memd-outline li[data-level="6"] { padding-left: 3.75rem; }
+.memd-panel-toggle { position: fixed; top: 0.5rem; z-index: 11; background: color-mix(in srgb, ${t.fg} 8%, ${t.bg}); border: 1px solid ${t.line}; color: ${t.muted}; cursor: pointer; border-radius: 4px; padding: 0.25rem; display: flex; align-items: center; justify-content: center; line-height: 0; }
+.memd-panel-toggle:hover { background: color-mix(in srgb, ${t.fg} 15%, ${t.bg}); color: ${t.fg}; }
+.memd-panel-toggle svg { width: 16px; height: 16px; }
+.memd-toggle-sidebar { left: 0.5rem; }
+.memd-toggle-outline { right: 0.5rem; }
 </style>
 <!--memd:head-->
 </head>

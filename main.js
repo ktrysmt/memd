@@ -500,6 +500,25 @@ function buildSidebarHtml(dirUrlPath, activeFileName, dirEntries) {
   return `<nav class="memd-sidebar"><ul>\n${items.join('\n')}\n</ul></nav>`;
 }
 
+const SIDEBAR_TOGGLE_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M5.5 2.5v11"/></svg>';
+const OUTLINE_TOGGLE_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h10M5 8h8M5 12h8"/></svg>';
+
+function injectOutlineOnly(html, t) {
+  const css = `.memd-layout { display: grid; grid-template-columns: 1fr 220px; min-height: 100vh; }
+body:has(.memd-layout) { max-width: none; margin: 0; padding: 0; }
+.memd-content { max-width: 70%; padding: 2rem 1rem; margin: 0 auto; }
+@media (max-width: 1024px) { .memd-content { max-width: 85%; } }
+@media (max-width: 768px) { .memd-content { max-width: 100%; } .memd-layout { grid-template-columns: 1fr; } .memd-outline { display: none !important; } .memd-toggle-outline { display: none; } }
+body.memd-full-width .memd-content { max-width: none; margin: 0; }
+body.memd-outline-hidden .memd-layout { grid-template-columns: 1fr; }
+body.memd-outline-hidden .memd-outline { display: none; }
+.memd-outline { position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 2.5rem 0.75rem 1rem; border-left: 1px solid ${t.line}; background: color-mix(in srgb, ${t.fg} 3%, ${t.bg}); box-sizing: border-box; }`;
+  html = html.replace('<!--memd:head-->', `<style>${css}</style>`);
+  html = html.replace('<!--memd:content-->', `<button class="memd-toggle-outline memd-panel-toggle" aria-label="Toggle outline">${OUTLINE_TOGGLE_SVG}</button><div class="memd-layout"><main class="memd-content">`);
+  html = html.replace('<!--/memd:content-->', '</main><nav class="memd-outline"><ul></ul></nav></div>');
+  return html;
+}
+
 function readStdin() {
   return new Promise((resolve, reject) => {
     let data = '';
@@ -622,11 +641,13 @@ async function main() {
 
       if (options.html) {
         // 3a. HTML path
-        const { renderToHTML, initHighlighter, MERMAID_MODAL_SCRIPT, WIDTH_TOGGLE_SCRIPT } = await import('./render-shared.js');
+        const { renderToHTML, initHighlighter, MERMAID_MODAL_SCRIPT, WIDTH_TOGGLE_SCRIPT, OUTLINE_SCRIPT, PANEL_TOGGLE_SCRIPT } = await import('./render-shared.js');
         await initHighlighter();
         const combined = markdownParts.join('\n\n');
         let html = renderToHTML(combined, diagramColors, themeEntry.shikiTheme);
-        let inlineScripts = WIDTH_TOGGLE_SCRIPT;
+        const t = resolveThemeColors(diagramColors);
+        html = injectOutlineOnly(html, t);
+        let inlineScripts = WIDTH_TOGGLE_SCRIPT + PANEL_TOGGLE_SCRIPT + OUTLINE_SCRIPT;
         if (html.includes('mermaid-diagram')) inlineScripts += MERMAID_MODAL_SCRIPT;
         html = html.replace('<!--memd:scripts-->', `<script>${inlineScripts}</script>`);
         process.stdout.write(html);
@@ -766,7 +787,7 @@ async function main() {
         console.error('Invalid --workers: must be a positive integer');
         process.exit(1);
       }
-      const { MERMAID_MODAL_SCRIPT: mermaidModalScript, WIDTH_TOGGLE_SCRIPT: widthToggleScript } = await import('./render-shared.js');
+      const { MERMAID_MODAL_SCRIPT: mermaidModalScript, WIDTH_TOGGLE_SCRIPT: widthToggleScript, OUTLINE_SCRIPT: outlineScript, PANEL_TOGGLE_SCRIPT: panelToggleScript } = await import('./render-shared.js');
       const poolSize = options.workers ?? Math.min(Math.max(1, os.cpus().length - 1), 4);
       const workerPath = new URL('./render-worker.js', import.meta.url);
       const pool = createRenderPool(workerPath, poolSize, {
@@ -869,8 +890,8 @@ async function main() {
         map.set(key, val);
       }
 
-      const sidebarCss = `.memd-layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
-.memd-sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 1rem; border-right: 1px solid ${t.line}; background: color-mix(in srgb, ${t.fg} 3%, ${t.bg}); box-sizing: border-box; }
+      const layoutCss = `.memd-layout { display: grid; grid-template-columns: 220px 1fr 220px; min-height: 100vh; }
+.memd-sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 2.5rem 1rem 1rem; border-right: 1px solid ${t.line}; background: color-mix(in srgb, ${t.fg} 3%, ${t.bg}); box-sizing: border-box; }
 .memd-sidebar ul { list-style: none; padding: 0; margin: 0; }
 .memd-sidebar li { padding: 0.15rem 0; }
 .memd-sidebar a { color: ${t.accent}; text-decoration: none; display: block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.9rem; }
@@ -881,18 +902,24 @@ async function main() {
 @media (max-width: 768px) { .memd-content { max-width: 100%; } }
 body.memd-full-width .memd-content { max-width: none; margin: 0; }
 body:has(.memd-layout) { max-width: none; margin: 0; padding: 0; }
-.memd-hamburger { display: none; position: fixed; top: 0.5rem; left: 0.5rem; z-index: 10; background: color-mix(in srgb, ${t.fg} 8%, ${t.bg}); border: 1px solid ${t.line}; color: ${t.fg}; padding: 0.3rem 0.5rem; cursor: pointer; border-radius: 4px; font-size: 1.2rem; }
+.memd-outline { position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 2.5rem 0.75rem 1rem; border-left: 1px solid ${t.line}; background: color-mix(in srgb, ${t.fg} 3%, ${t.bg}); box-sizing: border-box; }
+body.memd-sidebar-hidden .memd-sidebar { display: none; }
+body.memd-sidebar-hidden .memd-layout { grid-template-columns: 1fr 220px; }
+body.memd-outline-hidden .memd-outline { display: none; }
+body.memd-outline-hidden .memd-layout { grid-template-columns: 220px 1fr; }
+body.memd-sidebar-hidden.memd-outline-hidden .memd-layout { grid-template-columns: 1fr; }
 @media (max-width: 768px) {
-  .memd-layout { grid-template-columns: 1fr; }
-  .memd-sidebar { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; z-index: 5; transform: translateX(-100%); transition: transform 0.2s; }
-  .memd-sidebar.memd-sidebar-open { transform: translateX(0); }
-  .memd-hamburger { display: block; }
+  .memd-layout { grid-template-columns: 1fr !important; }
+  .memd-sidebar { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; z-index: 5; }
+  body.memd-sidebar-hidden .memd-sidebar { display: none; }
+  .memd-outline { display: none; }
+  .memd-toggle-outline { display: none; }
   .memd-content { padding-top: 3rem; }
 }`;
       function injectSidebar(html, sidebarHtml) {
-        html = html.replace('<!--memd:head-->', `<style>${sidebarCss}</style>`);
-        html = html.replace('<!--memd:content-->', `<button class="memd-hamburger" aria-label="Toggle sidebar">&#9776;</button><div class="memd-layout">${sidebarHtml}<main class="memd-content">`);
-        html = html.replace('<!--/memd:content-->', '</main></div>');
+        html = html.replace('<!--memd:head-->', `<style>${layoutCss}</style>`);
+        html = html.replace('<!--memd:content-->', `<button class="memd-toggle-sidebar memd-panel-toggle" aria-label="Toggle sidebar">${SIDEBAR_TOGGLE_SVG}</button><button class="memd-toggle-outline memd-panel-toggle" aria-label="Toggle outline">${OUTLINE_TOGGLE_SVG}</button><div class="memd-layout">${sidebarHtml}<main class="memd-content">`);
+        html = html.replace('<!--/memd:content-->', '</main><nav class="memd-outline"><ul></ul></nav></div>');
         return html;
       }
 
@@ -902,12 +929,9 @@ body:has(.memd-layout) { max-width: none; margin: 0; padding: 0; }
           res.end();
           return;
         }
-        let scripts = widthToggleScript;
+        let scripts = widthToggleScript + panelToggleScript + outlineScript;
         if (options.watch) {
           scripts += 'new EventSource("/_memd/events").onmessage=function(){location.reload()};';
-        }
-        if (hasSidebar) {
-          scripts += `document.querySelector('.memd-hamburger').onclick=function(){document.querySelector('.memd-sidebar').classList.toggle('memd-sidebar-open')};`;
         }
         if (hasMermaid) {
           scripts += mermaidModalScript;
@@ -1051,6 +1075,8 @@ body:has(.memd-layout) { max-width: none; margin: 0; padding: 0; }
             lruSet(sidebarHtmlCache, sidebarKey, sidebarHtml, SIDEBAR_CACHE_MAX);
           }
           html = injectSidebar(rawHtml, sidebarHtml);
+        } else {
+          html = injectOutlineOnly(rawHtml, t);
         }
         return { html, etag, hasSidebar, hasMermaid };
       }
