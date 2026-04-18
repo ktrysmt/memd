@@ -65,7 +65,7 @@ CSS: .memd-toggle-sidebar { left }
 CSS: .memd-toggle-outline { right }
 CSS: .memd-layout { display, grid-template-columns, min-height }
 CSS: body:has(.memd-layout) { max-width, margin, padding }
-CSS: .memd-content { max-width, padding, margin }
+CSS: .memd-content { max-width, padding, margin, min-width }
 CSS: .memd-content { max-width }
 CSS: .memd-content { max-width }
 CSS: .memd-layout { grid-template-columns }
@@ -168,7 +168,7 @@ CSS: .memd-panel-toggle svg { width, height }
 CSS: .memd-toggle-sidebar { left }
 CSS: .memd-toggle-outline { right }
 CSS: .memd-layout { display, grid-template-columns, min-height }
-CSS: .memd-content { max-width, padding, margin }
+CSS: .memd-content { max-width, padding, margin, min-width }
 CSS: .memd-content { max-width }
 CSS: .memd-content { max-width }
 CSS: body.memd-full-width .memd-content { max-width, margin }
