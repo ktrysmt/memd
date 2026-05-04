@@ -70,7 +70,7 @@ function extractLayoutSkeleton(html) {
 describe('memd CLI', () => {
   it.concurrent('--version', async () => {
     const output = await run(['-v'])
-    expect(output).toContain('3.6.4')
+    expect(output).toContain('3.6.5')
   })
 
   it.concurrent('--help', async () => {
